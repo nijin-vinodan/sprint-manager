@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { ChatAnthropic } from "@langchain/anthropic";
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -21,10 +22,13 @@ export const config = {
     repo: requireEnv("GITHUB_REPO"),
   },
   agent: {
-    // "bedrock:<model-id>" resolves through initChatModel to ChatBedrockConverse
-    // (@langchain/aws), which reads AWS credentials/region from the standard
-    // AWS SDK chain (env vars, shared config/profile, SSO, instance role, etc).
-    model: process.env.AGENT_MODEL ?? "bedrock:us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+    // Claude via a LiteLLM proxy speaking the Anthropic-compatible API,
+    // instead of talking to Bedrock directly with AWS credentials.
+    model: new ChatAnthropic({
+      model: requireEnv("ANTHROPIC_MODEL"),
+      apiKey: requireEnv("ANTHROPIC_AUTH_TOKEN"),
+      anthropicApiUrl: requireEnv("ANTHROPIC_BASE_URL"),
+    }),
   },
 } as const;
 
