@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { getSprintManagerAgent } from "./_agent";
+import { langfuseCallbacks, flushTracing } from "../../../dist/tracing.js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -163,7 +164,7 @@ export async function POST(req: NextRequest) {
       try {
         const run = await agent.streamEvents(
           { messages: body.messages },
-          { version: "v3", signal: abortController.signal },
+          { version: "v3", signal: abortController.signal, callbacks: langfuseCallbacks },
         );
 
         track(pumpMessages(run.messages, []));
@@ -184,6 +185,7 @@ export async function POST(req: NextRequest) {
         closed = true;
         clearInterval(heartbeat);
         controller.close();
+        flushTracing().catch(() => {});
       }
     },
     cancel() {
