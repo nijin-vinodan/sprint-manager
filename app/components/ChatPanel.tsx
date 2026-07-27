@@ -8,6 +8,18 @@ interface ChatMessage {
   content: string;
 }
 
+type TodoStatus = "pending" | "in_progress" | "completed";
+interface TodoItem {
+  content: string;
+  status: TodoStatus;
+}
+
+const TODO_STATUS_ICON: Record<TodoStatus, string> = {
+  pending: "☐",
+  in_progress: "◐",
+  completed: "☑",
+};
+
 type SseEvent =
   | { type: "subagent_start"; path: string[]; name: string }
   | { type: "subagent_end"; path: string[]; name: string; error?: string }
@@ -28,6 +40,7 @@ export function ChatPanel() {
   const [streamingText, setStreamingText] = useState("");
   const [activeSubagents, setActiveSubagents] = useState<ActiveSubagent[]>([]);
   const [toolActivity, setToolActivity] = useState<string[]>([]);
+  const [plan, setPlan] = useState<TodoItem[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -42,6 +55,7 @@ export function ChatPanel() {
       setStreamingText("");
       setActiveSubagents([]);
       setToolActivity([]);
+      setPlan([]);
       setError(null);
       setIsStreaming(true);
 
@@ -60,6 +74,13 @@ export function ChatPanel() {
             }
             break;
           case "tool_call":
+            if (event.name === "write_todos") {
+              const todos = (event.input as { todos?: TodoItem[] } | undefined)?.todos;
+              if (Array.isArray(todos)) setPlan(todos);
+              break;
+            } else {
+              console.log("No write_todos event, event.input:", event.input);
+            }
             setToolActivity((prev) => [
               ...prev,
               `${event.path.join(" > ") || "orchestrator"}: calling ${event.name}`,
@@ -140,6 +161,25 @@ export function ChatPanel() {
           Working: {s.name}…
         </div>
       ))}
+
+      {plan.length > 0 && (
+        <ul className="rounded-md bg-slate-900 p-2 text-xs">
+          {plan.map((todo, i) => (
+            <li
+              key={i}
+              className={
+                todo.status === "completed"
+                  ? "text-slate-500 line-through"
+                  : todo.status === "in_progress"
+                    ? "text-indigo-300"
+                    : "text-slate-300"
+              }
+            >
+              {TODO_STATUS_ICON[todo.status]} {todo.content}
+            </li>
+          ))}
+        </ul>
+      )}
 
       <div className="flex-1 overflow-y-auto rounded-md bg-slate-900 p-3">
         <div className="flex flex-col gap-3">

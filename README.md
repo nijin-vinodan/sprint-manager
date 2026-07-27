@@ -15,8 +15,18 @@ flowchart TB
         idx["src/index.ts<br/>(entry point, takes a prompt arg)"]
     end
 
-    subgraph Agent["src/agent.ts"]
-        da["createDeepAgent()<br/>model + systemPrompt + tools"]
+    subgraph Orchestrator["src/agent.ts"]
+        da["createDeepAgent()<br/>ORCHESTRATOR_PROMPT + subagents<br/>(no tools of its own)"]
+    end
+
+    subgraph SubAgents["Sub-agents (src/agents/), each facts-only, blind to the other's data"]
+        direction TB
+        subgraph JiraAgent["jiraAnalyst.ts"]
+            ja["jira-analyst<br/>JIRA_ANALYST_PROMPT"]
+        end
+        subgraph GitHubAgent["githubAnalyst.ts"]
+            ga["github-analyst<br/>GITHUB_ANALYST_PROMPT"]
+        end
     end
 
     subgraph Tools["Tools (Zod-typed, langchain tool())"]
@@ -40,12 +50,16 @@ flowchart TB
     subgraph External["External APIs"]
         jira[("Jira Cloud REST API v3 +<br/>Agile API")]
         gh[("GitHub REST API")]
-        model[("Claude via Amazon Bedrock<br/>(ChatBedrockConverse)")]
+        model[("Claude via LiteLLM proxy<br/>(ChatAnthropic)")]
     end
 
     idx --> da
-    da -->|tool calls| t1 & t2 & t3 & t4 & t5
-    da <-->|reasoning| model
+    da -->|delegates| ja
+    da -->|delegates| ga
+    da <-->|reasoning, cross-references<br/>linkedIssueKey| model
+
+    ja -->|tool calls| t1 & t2 & t3
+    ga -->|tool calls| t4 & t5
 
     t1 & t2 & t3 --> jira
     t4 & t5 --> gh
@@ -59,12 +73,15 @@ flowchart TB
 **Design principles**
 
 - Tools return **pre-digested, computed facts** (`daysSinceUpdate`, `isOverdue`, `ageDays`,
-  `isStale`, `reviewState`, `linkedIssueKey`) — the agent never does date math or regex
-  extraction itself.
+  `isStale`, `reviewState`, `linkedIssueKey`) — no agent does date math or regex extraction
+  itself.
 - Thresholds (`STALE_TICKET_DAYS`, `STALE_PR_DAYS`) live in one place: `src/config.ts`.
-- The agent is told to **cross-check Jira status against GitHub activity** rather than trust
-  Jira status at face value (e.g. a ticket "In Review" with no recent PR review activity is a
-  risk, not a healthy ticket), and to ground every claim in a specific issue key or PR number.
+- The two sub-agents are **read-only and facts-only** — they fetch and report data but never
+  judge sprint health or look at each other's data.
+- **Only the orchestrator cross-references Jira against GitHub**, matching via `linkedIssueKey`
+  (extracted from PR titles/bodies and commit messages) rather than trusting Jira status at
+  face value (e.g. a ticket "In Review" with no recent PR review activity is a risk, not a
+  healthy ticket), and it grounds every claim in a specific issue key or PR number.
 
 ## Setup
 
