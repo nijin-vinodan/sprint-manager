@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getSprintManagerAgent } from "./_agent";
 import { langfuseCallbacks, flushTracing } from "../../../dist/tracing.js";
+import { debugCallbacks } from "../../../dist/debugLogger.js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -164,7 +165,7 @@ export async function POST(req: NextRequest) {
       try {
         const run = await agent.streamEvents(
           { messages: body.messages },
-          { version: "v3", signal: abortController.signal, callbacks: langfuseCallbacks },
+          { version: "v3", signal: abortController.signal, callbacks: [...langfuseCallbacks, ...debugCallbacks] },
         );
 
         track(pumpMessages(run.messages, []));

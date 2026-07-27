@@ -1,5 +1,6 @@
 import { createSprintManagerAgent } from "./agent.js";
 import { langfuseCallbacks, shutdownTracing } from "./tracing.js";
+import { debugCallbacks } from "./debugLogger.js";
 
 function messageText(content: unknown): string {
   if (typeof content === "string") return content;
@@ -17,7 +18,7 @@ async function main() {
   const agent = createSprintManagerAgent();
   const result = await agent.invoke(
     { messages: [{ role: "user", content: prompt }] },
-    { callbacks: langfuseCallbacks },
+    { callbacks: [...langfuseCallbacks, ...debugCallbacks] },
   );
 
   const lastMessage = result.messages[result.messages.length - 1];
