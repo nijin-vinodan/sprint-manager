@@ -7,7 +7,12 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "predashboard:dev": "npm run build",
+    "dashboard:dev": "next dev",
+    "predashboard:build": "npm run build",
+    "dashboard:build": "next build",
+    "dashboard:start": "next start"
   },
   "dependencies": {
     "@langchain/anthropic": "^1.5.2",
@@ -15,10 +20,23 @@
     "@langchain/langgraph": "^1.4.4",
     "@langchain/langgraph-checkpoint": "^1.1.2",
     "@langchain/langgraph-sdk": "^1.9.23",
+    "@langfuse/langchain": "^5.9.1",
+    "@langfuse/otel": "^5.9.1",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.221.0",
+    "@opentelemetry/sdk-node": "^0.221.0",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
     "deepagents": "^1.11.1",
     "dotenv": "^17.2.4",
     "langchain": "^1.5.0",
     "langsmith": "^0.7.1",
+    "next": "^16.2.12",
+    "postcss": "^8.5.23",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "tailwindcss": "^4.3.3",
     "zod": "^4.3.6"
   },
   "devDependencies": {

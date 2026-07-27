@@ -1,4 +1,6 @@
 import { createSprintManagerAgent } from "./agent.js";
+import { langfuseCallbacks, shutdownTracing } from "./tracing.js";
+import { debugCallbacks } from "./debugLogger.js";
 
 function messageText(content: unknown): string {
   if (typeof content === "string") return content;
@@ -14,15 +16,18 @@ async function main() {
   const prompt = process.argv[2] ?? "Give me today's sprint status update";
 
   const agent = createSprintManagerAgent();
-  const result = await agent.invoke({
-    messages: [{ role: "user", content: prompt }],
-  });
+  const result = await agent.invoke(
+    { messages: [{ role: "user", content: prompt }] },
+    { callbacks: [...langfuseCallbacks, ...debugCallbacks] },
+  );
 
   const lastMessage = result.messages[result.messages.length - 1];
   console.log(messageText(lastMessage.content));
 }
 
-main().catch((err) => {
-  console.error("Sprint Manager agent failed:", err);
-  process.exit(1);
-});
+main()
+  .catch((err) => {
+    console.error("Sprint Manager agent failed:", err);
+    process.exitCode = 1;
+  })
+  .finally(shutdownTracing);
