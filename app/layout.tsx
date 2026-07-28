@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Header } from "./components/Header";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -6,10 +7,24 @@ export const metadata: Metadata = {
   description: "Sprint status dashboard over live Jira + GitHub data",
 };
 
+const THEME_INIT_SCRIPT = `
+  (function () {
+    var stored = localStorage.getItem("theme");
+    var dark = stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.classList.toggle("dark", dark);
+  })();
+`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="bg-slate-950 text-slate-100 antialiased">{children}</body>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
+      <body className="flex h-screen flex-col bg-white text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100">
+        <Header />
+        <div className="min-h-0 flex-1">{children}</div>
+      </body>
     </html>
   );
 }

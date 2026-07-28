@@ -158,13 +158,16 @@ export function ChatPanel() {
       <h2 className="text-lg font-semibold">Chat</h2>
 
       {activeSubagents.map((s) => (
-        <div key={s.name} className="rounded-md bg-indigo-500/10 px-3 py-1 text-xs text-indigo-300">
+        <div
+          key={s.name}
+          className="rounded-md bg-indigo-500/10 px-3 py-1 text-xs text-indigo-700 dark:text-indigo-300"
+        >
           Working: {s.name}…
         </div>
       ))}
 
       {plan.length > 0 && (
-        <ul className="rounded-md bg-slate-900 p-2 text-xs">
+        <ul className="rounded-md bg-slate-100 p-2 text-xs dark:bg-slate-900">
           {plan.map((todo, i) => (
             <li
               key={i}
@@ -172,8 +175,8 @@ export function ChatPanel() {
                 todo.status === "completed"
                   ? "text-slate-500 line-through"
                   : todo.status === "in_progress"
-                    ? "text-indigo-300"
-                    : "text-slate-300"
+                    ? "text-indigo-700 dark:text-indigo-300"
+                    : "text-slate-600 dark:text-slate-300"
               }
             >
               {TODO_STATUS_ICON[todo.status]} {todo.content}
@@ -182,21 +185,21 @@ export function ChatPanel() {
         </ul>
       )}
 
-      <div className="flex-1 overflow-y-auto rounded-md bg-slate-900 p-3">
+      <div className="flex-1 overflow-y-auto rounded-md bg-slate-100 p-3 dark:bg-slate-900">
         <div className="flex flex-col gap-3">
           {messages.map((m, i) =>
             m.role === "user" ? (
-              <div key={i} className="self-end rounded-md bg-indigo-600 px-3 py-2 text-sm">
+              <div key={i} className="self-end rounded-md bg-indigo-600 px-3 py-2 text-sm text-white">
                 {m.content}
               </div>
             ) : (
-              <div key={i} className="rounded-md bg-slate-800 px-3 py-2 text-sm">
+              <div key={i} className="rounded-md bg-slate-200 px-3 py-2 text-sm dark:bg-slate-800">
                 <Markdown text={m.content} />
               </div>
             ),
           )}
           {isStreaming && streamingText && (
-            <div className="rounded-md bg-slate-800 px-3 py-2 text-sm">
+            <div className="rounded-md bg-slate-200 px-3 py-2 text-sm dark:bg-slate-800">
               <Markdown text={streamingText} />
             </div>
           )}
@@ -204,14 +207,18 @@ export function ChatPanel() {
       </div>
 
       {toolActivity.length > 0 && (
-        <ul className="max-h-24 overflow-y-auto rounded-md bg-slate-950 p-2 font-mono text-xs text-slate-500">
+        <ul className="max-h-24 overflow-y-auto rounded-md bg-slate-200 p-2 font-mono text-xs text-slate-500 dark:bg-slate-950">
           {toolActivity.map((line, i) => (
             <li key={i}>{line}</li>
           ))}
         </ul>
       )}
 
-      {error && <div className="rounded-md bg-red-500/10 p-2 text-sm text-red-300">{error}</div>}
+      {error && (
+        <div className="rounded-md bg-red-500/10 p-2 text-sm text-red-700 dark:text-red-300">
+          {error}
+        </div>
+      )}
 
       <form
         onSubmit={(e) => {
@@ -225,7 +232,7 @@ export function ChatPanel() {
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask about the sprint…"
           disabled={isStreaming}
-          className="flex-1 rounded-md bg-slate-900 px-3 py-2 text-sm outline-none disabled:opacity-50"
+          className="flex-1 rounded-md bg-slate-100 px-3 py-2 text-sm outline-none disabled:opacity-50 dark:bg-slate-900"
         />
         {isStreaming ? (
           <button
