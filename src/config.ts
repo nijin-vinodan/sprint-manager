@@ -30,6 +30,9 @@ export const config = {
       anthropicApiUrl: requireEnv("ANTHROPIC_BASE_URL"),
     }),
   },
+  digest: {
+    intervalMinutes: Number(process.env.DIGEST_INTERVAL_MINUTES ?? 20),
+  },
 } as const;
 
 // Thresholds used to pre-digest "is this stale/overdue/risky" facts inside

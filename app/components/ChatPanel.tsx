@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { Markdown } from "./Markdown";
 
 type Role = "user" | "assistant";
 interface ChatMessage {
@@ -183,21 +184,20 @@ export function ChatPanel() {
 
       <div className="flex-1 overflow-y-auto rounded-md bg-slate-900 p-3">
         <div className="flex flex-col gap-3">
-          {messages.map((m, i) => (
-            <div
-              key={i}
-              className={
-                m.role === "user"
-                  ? "self-end rounded-md bg-indigo-600 px-3 py-2 text-sm"
-                  : "whitespace-pre-wrap rounded-md bg-slate-800 px-3 py-2 text-sm"
-              }
-            >
-              {m.content}
-            </div>
-          ))}
+          {messages.map((m, i) =>
+            m.role === "user" ? (
+              <div key={i} className="self-end rounded-md bg-indigo-600 px-3 py-2 text-sm">
+                {m.content}
+              </div>
+            ) : (
+              <div key={i} className="rounded-md bg-slate-800 px-3 py-2 text-sm">
+                <Markdown text={m.content} />
+              </div>
+            ),
+          )}
           {isStreaming && streamingText && (
-            <div className="whitespace-pre-wrap rounded-md bg-slate-800 px-3 py-2 text-sm">
-              {streamingText}
+            <div className="rounded-md bg-slate-800 px-3 py-2 text-sm">
+              <Markdown text={streamingText} />
             </div>
           )}
         </div>
