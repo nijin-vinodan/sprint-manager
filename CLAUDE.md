@@ -11,8 +11,8 @@ npm run build          # tsc -p tsconfig.json
 npm run typecheck      # tsc --noEmit
 npx tsx src/testTools.ts   # sanity-check the Jira/GitHub tools directly against real data, no model call
 
-npm run dashboard:dev    # builds dist/, then starts the Next.js dashboard (next dev)
-npm run dashboard:build  # builds dist/, then next build
+npm run dashboard:dev    # starts the Next.js dashboard (next dev) — talks to the agent server over HTTP, no local build needed
+npm run dashboard:build  # next build
 npm run dashboard:start  # next start (assumes dashboard:build already ran)
 
 DEBUG_AGENT=1 npm run dev -- "..."   # same CLI run, with per-agent tool/delegation logging (see Debugging below)
@@ -33,18 +33,26 @@ This is a multi-agent [DeepAgents](https://github.com/langchain-ai/deepagentsjs)
 - `src/index.ts` — CLI entry point; takes an optional prompt as `process.argv[2]`.
 - `src/testTools.ts` — throwaway script exercising the tools directly, no agent/model involved.
 - `src/tracing.ts` — Langfuse/OpenTelemetry callback handler (`langfuseCallbacks`), enabled when `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY` are set. `shutdownTracing()` (CLI) fully tears down the SDK; `flushTracing()` (dashboard) just flushes so the long-lived server process keeps running.
-- `src/debugLogger.ts` — `AgentDebugLogger`, a `BaseCallbackHandler` gated behind `DEBUG_AGENT=1` (`debugCallbacks`, empty array otherwise). Logs every tool/model call prefixed with which agent is actually running it (`[orchestrator]`, `[jira-analyst]`, `[github-analyst]`), by propagating a label from parent run to child run and re-labeling whenever the `task` tool fires (deepagents' delegation mechanism). Wired into both `src/index.ts` and `app/api/chat/route.ts`.
+- `src/debugLogger.ts` — `AgentDebugLogger`, a `BaseCallbackHandler` gated behind `DEBUG_AGENT=1` (`debugCallbacks`, empty array otherwise). Logs every tool/model call prefixed with which agent is actually running it (`[orchestrator]`, `[jira-analyst]`, `[github-analyst]`), by propagating a label from parent run to child run and re-labeling whenever the `task` tool fires (deepagents' delegation mechanism). Wired into both `src/index.ts` and `src/server/routes.ts`.
+
+### Standalone agent server (`src/server/`)
+
+A hand-rolled Fastify service (no LangGraph Server) that runs the same `createDeepAgent()` in-process and exposes it over HTTP — `GET /health`, `POST /invoke`, `POST /invoke/stream` — for any application to call, auth'd via a gitignored `api-clients.json` (API key → app name). This is now the **only** place in the repo that actually invokes the agent outside the CLI; the dashboard talks to it over HTTP rather than embedding the agent itself. See the "Standalone agent server" section in `README.md` for the full contract, env vars, and architecture diagrams.
+
+Two things that make it different from the CLI's one-shot `createSprintManagerAgent()`:
+- **`src/server/checkpointer.ts`** wires a Postgres-backed `PostgresSaver` (`@langchain/langgraph-checkpoint-postgres`) into `createDeepAgent({ checkpointer })`, so conversation state per `thread_id` survives restarts and is shared across replicas — not held in process memory.
+- **`src/server/locks.ts`** adds a `thread_locks` table as a concurrency guard (replacing what LangGraph Server's `multitaskStrategy: "reject"` would give for free): before invoking the agent for a `thread_id`, the route atomically tries to acquire that thread's lock via a single `INSERT ... ON CONFLICT ... WHERE ... RETURNING`, and returns `409` immediately if it's already held — no queueing.
 
 ### Dashboard (Next.js, `app/`)
 
-A Next.js app sits on top of the agent for a browser UI — this is newer than the CLI and not the primary architecture described above, but it's a real, maintained part of the repo.
+A Next.js app sits on top of the agent for a browser UI — this is newer than the CLI and not the primary architecture described above, but it's a real, maintained part of the repo. **It never calls the agent in-process** — both of its agent-backed routes are thin proxies to the standalone server above, over HTTP, using `AGENT_SERVER_URL` + `AGENT_SERVER_API_KEY`.
 
-- `app/api/chat/route.ts` — SSE endpoint. Calls `agent.streamEvents({ messages }, { version: "v3", callbacks: [...langfuseCallbacks, ...debugCallbacks] })` and pumps `run.messages`/`run.toolCalls`/`run.subagents` into hand-rolled SSE frames (`token`, `tool_call`, `tool_result`, `subagent_start`/`subagent_end`, `done`, `error`).
-- `app/api/chat/_agent.ts` — lazily builds one `createSprintManagerAgent()` instance and caches it on `globalThis`, so it survives across requests in the same server process.
-- `app/components/ChatPanel.tsx` — client component; `fetch("/api/chat", { method: "POST" })`, reads the response as an SSE stream, and renders streamed tokens plus sub-agent/tool activity.
-- `app/api/sprint/route.ts` — **does not go through the agent at all.** It calls the compiled Jira/GitHub tools directly (`getActiveSprint`, `getSprintIssues`, `getOpenPullRequests`, `getRecentCommits`) and does the ticket/PR/commit cross-referencing itself in the route handler, bypassing the orchestrator. Used by `app/components/SprintBoard.tsx` for a plain data view, separate from the chat path.
+- `app/api/chat/route.ts` — proxies `POST /api/chat` (`{ threadId, message }` from the client) straight through to the agent server's `POST /invoke/stream`, piping the upstream SSE response body back to the client unmodified. Holds no agent/pumping logic itself — that lives in `src/server/sse.ts` / `src/server/routes.ts` now, so the SSE event schema (`token`, `tool_call`, `tool_result`, `subagent_start`/`subagent_end`, `done`, `error`) is produced once, not duplicated per caller.
+- `app/components/ChatPanel.tsx` — client component; generates one `threadId` (`crypto.randomUUID()`) per mounted session and reuses it for every send in that session, so the agent server's checkpointer recalls prior turns without the client resending message history. `fetch("/api/chat", { method: "POST" })`, reads the response as an SSE stream, and renders streamed tokens plus sub-agent/tool activity. A `409` response (a run already in progress for this session's thread) surfaces as "Still working on your last question..." rather than a raw status code.
+- `app/api/digest/route.ts` / `app/api/digest/_scheduler.ts` — a periodic background job (`ensureDigestScheduler()`), independent of chat, that reruns a fixed "what's at risk" prompt on an interval (`DIGEST_INTERVAL_MINUTES`) and caches the latest result on `globalThis`. Also proxies to the agent server's `POST /invoke` (non-streaming), using a **fresh `threadId` every tick** (`digest-${randomUUID()}`) rather than a stable one — each tick is an independent snapshot, not a growing conversation, and a fresh thread per run means a slow tick can never `409` against its own next one.
+- `app/api/sprint/route.ts` — thin proxy to the standalone agent server's `GET /sprint`, same pattern as the chat/digest routes. The actual cross-referencing (calling `getActiveSprint`/`getSprintIssues`/`getOpenPullRequests`/`getRecentCommits` directly and stitching tickets to PRs/commits, bypassing the orchestrator) now lives in `src/server/routes.ts`, not in the dashboard. Used by `app/components/SprintBoard.tsx` for a plain data view, separate from the chat path.
 
-**The dashboard imports from `dist/`, not `src/`.** `tsconfig.json` has `rootDir: "src"` / `outDir: "dist"`, so `dist/agent.js`, `dist/tools/jira.js`, etc. are a 1:1 `tsc` compile of `src/`. The `predashboard:dev`/`predashboard:build` npm scripts run `npm run build` first, so going through those scripts keeps `dist/` fresh — but editing `src/*.ts` and just restarting `next dev` directly (without rebuilding) will silently keep running the old compiled behavior.
+**No dashboard route imports from `dist/` anymore.** Every `app/api/*` route (`chat`, `chat/history`, `sprint`, `digest`) is a pure HTTP proxy to the standalone agent server via `agentServerFetch` (`app/api/_lib/agentServer.ts`) — the dashboard has no agent/Jira/GitHub logic of its own left to compile. `digest/_scheduler.ts` imports `DIGEST_PROMPT` directly from `src/prompts/digest.ts` (a plain string constant, safe to import as source) rather than from `dist/`. This means `next dev`/`next build` need no prior `npm run build` step — `tsconfig.json`'s `rootDir: "src"` / `outDir: "dist"` compile is now only relevant to `server:build`/`server:start` (the standalone agent server's own deploy artifact), not the dashboard.
 
 **Only the orchestrator cross-references Jira against GitHub.** Both sub-agents are deliberately kept blind to each other's data — matching happens in the orchestrator via `linkedIssueKey`, which the tools extract from PR titles/bodies and commit messages (regex match against `config.jira.projectKey`, e.g. `SMA-123`). Sub-agents must never be asked to do this cross-referencing themselves.
 
@@ -53,8 +61,6 @@ A Next.js app sits on top of the agent for a browser UI — this is newer than t
 **Everything is read-only by design.** `READ_ONLY_NOTICE` (`src/prompts/shared.ts`) is included in all three system prompts. Do not add write/comment/transition tools to `src/tools/` without an explicit request — the whole system assumes no agent can mutate Jira or GitHub state.
 
 **Model config note:** `src/config.ts` currently configures the model via `ChatAnthropic` pointed at a LiteLLM proxy (`ANTHROPIC_MODEL` / `ANTHROPIC_AUTH_TOKEN` / `ANTHROPIC_BASE_URL`). `.env.example` and `README.md` still describe the earlier Bedrock (`ChatBedrockConverse` / `AGENT_MODEL` / `AWS_*`) setup — treat `config.ts` as the source of truth for what env vars are actually required.
-
-**README.md is stale on architecture** — it describes a single-agent v0 ("one agent, all tools, no sub-agents"); the code has since moved to the orchestrator + sub-agent structure described above.
 
 ### How `createDeepAgent` actually works (from `node_modules/deepagents/dist/langsmith-DVh4u6Za.js` — the package's public `.d.ts`/README don't spell this out)
 

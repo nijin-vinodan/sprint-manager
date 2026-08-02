@@ -1,0 +1,38 @@
+# Postgres for the standalone agent server (src/server/) — backs both the
+# LangGraph checkpointer (conversation/thread state) and the thread_locks
+# table (concurrency guard). No Redis: streaming here is per-request/in-process,
+# not detached background runs, so there's no cross-process pub-sub requirement.
+#
+# Explicit `name:` + `container_name:` below so this never collides with the
+# langfuse stack's postgres (docker-compose.langfuse.yml) — both files live in
+# this same directory, and without an explicit project name, Compose derives
+# one from the directory name, making both files' default "postgres" service
+# resolve to the identical container name and stomp on each other.
+#
+# Host port 5434 (rather than the 5432 default) to avoid clashing with the
+# langfuse stack's postgres, which already uses 5433.
+name: sprint-manager-agent
+services:
+  postgres:
+    container_name: sprint-manager-agent-postgres
+    image: docker.io/postgres:${POSTGRES_VERSION:-17}
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres} # CHANGEME
+      POSTGRES_DB: ${POSTGRES_DB:-sprint_manager}
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - 127.0.0.1:5434:5432
+    volumes:
+      - sprint_manager_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  sprint_manager_postgres_data:
+    driver: local

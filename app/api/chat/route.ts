@@ -1,69 +1,18 @@
 import { NextRequest } from "next/server";
-import { getSprintManagerAgent } from "./_agent";
-import { langfuseCallbacks, flushTracing } from "../../../dist/tracing.js";
-import { debugCallbacks } from "../../../dist/debugLogger.js";
+import { agentServerFetch } from "../_lib/agentServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type ChatMessage = { role: "user" | "assistant"; content: string };
-
 interface ChatRequestBody {
-  messages: ChatMessage[];
+  threadId: string;
+  message: string;
 }
 
-type SseEvent =
-  | { type: "subagent_start"; path: string[]; name: string }
-  | { type: "subagent_end"; path: string[]; name: string; error?: string }
-  | { type: "tool_call"; path: string[]; callId: string; name: string; input: unknown }
-  | {
-      type: "tool_result";
-      path: string[];
-      callId: string;
-      name: string;
-      output?: unknown;
-      status: "finished" | "error";
-      error?: string;
-    }
-  | { type: "token"; path: string[]; text: string }
-  | { type: "done"; text: string }
-  | { type: "error"; message: string };
-
-function sseFrame(event: SseEvent): string {
-  return `data: ${JSON.stringify(event)}\n\n`;
-}
-
-function extractText(content: unknown): string {
-  if (typeof content === "string") return content;
-  if (Array.isArray(content)) {
-    return content
-      .map((block) => (typeof block === "string" ? block : (block as { text?: string }).text ?? ""))
-      .join("");
-  }
-  return "";
-}
-
-interface ToolCallLike {
-  name: string;
-  callId: string;
-  input: unknown;
-  output: Promise<unknown>;
-  status: Promise<"running" | "finished" | "error">;
-  error: Promise<string | undefined>;
-}
-
-interface MessageLike {
-  text: AsyncIterable<string>;
-}
-
-interface SubagentLike {
-  name: string;
-  output: Promise<unknown>;
-  messages: AsyncIterable<MessageLike>;
-  toolCalls: AsyncIterable<ToolCallLike>;
-  subagents: AsyncIterable<SubagentLike>;
-}
-
+// Thin proxy to the standalone agent server (src/server/) — this route holds no
+// agent logic itself. It exists only to keep the calling app's API key out of
+// the browser: the browser talks to this same-origin route with no secret,
+// and this route attaches the real x-api-key server-side before forwarding.
 export async function POST(req: NextRequest) {
   let body: ChatRequestBody;
   try {
@@ -71,130 +20,38 @@ export async function POST(req: NextRequest) {
   } catch {
     return new Response("Invalid JSON body", { status: 400 });
   }
-  if (!Array.isArray(body?.messages) || body.messages.length === 0) {
-    return new Response("`messages` must be a non-empty array", { status: 400 });
+  if (typeof body?.threadId !== "string" || body.threadId.length === 0) {
+    return new Response('"threadId" must be a non-empty string', { status: 400 });
+  }
+  if (typeof body?.message !== "string" || body.message.length === 0) {
+    return new Response('"message" must be a non-empty string', { status: 400 });
   }
 
-  const agent = getSprintManagerAgent();
-  const encoder = new TextEncoder();
-  const abortController = new AbortController();
-  req.signal.addEventListener("abort", () => abortController.abort(req.signal.reason));
-
-  const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      let closed = false;
-      const emit = (event: SseEvent) => {
-        if (closed) return;
-        try {
-          controller.enqueue(encoder.encode(sseFrame(event)));
-        } catch {
-          // controller already closed (client disconnected mid-flush)
-        }
-      };
-
-      const heartbeat = setInterval(() => {
-        if (closed) return;
-        try {
-          controller.enqueue(encoder.encode(`: heartbeat\n\n`));
-        } catch {
-          // ignore
-        }
-      }, 15_000);
-
-      const inflight = new Set<Promise<void>>();
-      const track = (p: Promise<void>) => {
-        inflight.add(p);
-        p.catch(() => {}).finally(() => inflight.delete(p));
-        return p;
-      };
-
-      async function pumpMessages(messages: AsyncIterable<MessageLike>, path: string[]) {
-        for await (const msg of messages) {
-          for await (const token of msg.text) {
-            if (path.length === 0) emit({ type: "token", path, text: token });
-          }
-        }
-      }
-
-      async function pumpToolCalls(toolCalls: AsyncIterable<ToolCallLike>, path: string[]) {
-        for await (const call of toolCalls) {
-          if (call.name === "task") continue; // delegation tool — represented via subagent_start/end instead
-          emit({ type: "tool_call", path, callId: call.callId, name: call.name, input: call.input });
-          track(
-            (async () => {
-              const [status, err] = await Promise.all([call.status, call.error]);
-              const output = status === "finished" ? await call.output.catch(() => undefined) : undefined;
-              emit({
-                type: "tool_result",
-                path,
-                callId: call.callId,
-                name: call.name,
-                output,
-                status: status === "error" ? "error" : "finished",
-                error: err,
-              });
-            })(),
-          );
-        }
-      }
-
-      async function pumpSubagents(subagents: AsyncIterable<SubagentLike>, path: string[]) {
-        for await (const sub of subagents) {
-          const subPath = [...path, sub.name];
-          emit({ type: "subagent_start", path: subPath, name: sub.name });
-
-          track(pumpMessages(sub.messages, subPath));
-          track(pumpToolCalls(sub.toolCalls, subPath));
-          track(pumpSubagents(sub.subagents, subPath));
-
-          track(
-            sub.output.then(
-              () => emit({ type: "subagent_end", path: subPath, name: sub.name }),
-              (err) =>
-                emit({
-                  type: "subagent_end",
-                  path: subPath,
-                  name: sub.name,
-                  error: err instanceof Error ? err.message : String(err),
-                }),
-            ),
-          );
-        }
-      }
-
-      try {
-        const run = await agent.streamEvents(
-          { messages: body.messages },
-          { version: "v3", signal: abortController.signal, callbacks: [...langfuseCallbacks, ...debugCallbacks] },
-        );
-
-        track(pumpMessages(run.messages, []));
-        track(pumpToolCalls(run.toolCalls, []));
-        track(pumpSubagents(run.subagents, []));
-
-        const finalState = await run.output;
-
-        while (inflight.size > 0) {
-          await Promise.allSettled([...inflight]);
-        }
-
-        const lastMessage = finalState.messages[finalState.messages.length - 1];
-        emit({ type: "done", text: extractText(lastMessage?.content) });
-      } catch (err) {
-        emit({ type: "error", message: err instanceof Error ? err.message : String(err) });
-      } finally {
-        closed = true;
-        clearInterval(heartbeat);
-        controller.close();
-        flushTracing().catch(() => {});
-      }
-    },
-    cancel() {
-      abortController.abort();
-    },
+  const upstream = await agentServerFetch("/invoke/stream", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ threadId: body.threadId, prompt: body.message }),
+    signal: req.signal,
   });
 
-  return new Response(stream, {
+  // The agent server's concurrency guard rejects a second run for the same
+  // thread outright — pass its 409 straight through rather than retrying or
+  // queueing on the caller's behalf.
+  if (upstream.status === 409) {
+    return new Response(upstream.body, {
+      status: 409,
+      headers: { "Content-Type": upstream.headers.get("Content-Type") ?? "application/json" },
+    });
+  }
+  if (!upstream.ok || !upstream.body) {
+    const text = await upstream.text().catch(() => "");
+    return new Response(JSON.stringify({ error: text || `Agent server responded ${upstream.status}` }), {
+      status: upstream.status || 502,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  return new Response(upstream.body, {
     headers: {
       "Content-Type": "text/event-stream; charset=utf-8",
       "Cache-Control": "no-cache, no-transform",

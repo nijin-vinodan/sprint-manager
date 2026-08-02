@@ -5,3 +5,4 @@ dist/
 .env.langfuse
 *.log
 *.tsbuildinfo
+api-clients.json

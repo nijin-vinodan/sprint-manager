@@ -1,7 +1,19 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Markdown } from "./Markdown";
+
+const THREAD_ID_KEY = "sprintmanager.chat.threadId";
+
+// Only called from a useEffect (client-only) — never during SSR, where
+// localStorage doesn't exist.
+function loadOrCreateThreadId(): string {
+  const stored = localStorage.getItem(THREAD_ID_KEY);
+  if (stored) return stored;
+  const fresh = crypto.randomUUID();
+  localStorage.setItem(THREAD_ID_KEY, fresh);
+  return fresh;
+}
 
 type Role = "user" | "assistant";
 interface ChatMessage {
@@ -27,7 +39,7 @@ type SseEvent =
   | { type: "tool_call"; path: string[]; callId: string; name: string; input: unknown }
   | { type: "tool_result"; path: string[]; callId: string; name: string; output?: unknown; status: string; error?: string }
   | { type: "token"; path: string[]; text: string }
-  | { type: "done"; text: string }
+  | { type: "done"; threadId: string; response: string }
   | { type: "error"; message: string };
 
 interface ActiveSubagent {
@@ -36,6 +48,14 @@ interface ActiveSubagent {
 }
 
 export function ChatPanel() {
+  // threadId persists in localStorage across refreshes, so the standalone
+  // agent server's checkpointer can recall prior turns — the message history
+  // below is then hydrated from Postgres via that same threadId, not cached
+  // client-side, so it survives a refresh without a client-side cache of its own.
+  // Starts empty (not read from localStorage directly) since this component
+  // renders during SSR, where localStorage doesn't exist — resolved to a real
+  // value in the mount effect below, same pattern as ThemeToggle.tsx.
+  const [threadId, setThreadId] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [streamingText, setStreamingText] = useState("");
@@ -46,12 +66,47 @@ export function ChatPanel() {
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  useEffect(() => {
+    setThreadId(loadOrCreateThreadId());
+  }, []);
+
+  useEffect(() => {
+    if (!threadId) return; // still resolving from localStorage (see mount effect above)
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/chat/history?threadId=${encodeURIComponent(threadId)}`);
+        if (!res.ok) return; // degrade to empty chat — a history-load hiccup isn't a send failure
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data?.messages)) {
+          setMessages(data.messages);
+        }
+      } catch {
+        // network error / bad JSON — degrade silently to empty chat
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [threadId]);
+
+  const startNewChat = useCallback(() => {
+    const fresh = crypto.randomUUID();
+    localStorage.setItem(THREAD_ID_KEY, fresh);
+    setThreadId(fresh);
+    setMessages([]);
+    setStreamingText("");
+    setActiveSubagents([]);
+    setToolActivity([]);
+    setPlan([]);
+    setError(null);
+  }, []);
+
   const send = useCallback(
     async (userText: string) => {
-      if (!userText.trim() || isStreaming) return;
+      if (!userText.trim() || isStreaming || !threadId) return;
 
-      const nextHistory: ChatMessage[] = [...messages, { role: "user", content: userText }];
-      setMessages(nextHistory);
+      setMessages((prev) => [...prev, { role: "user", content: userText }]);
       setInput("");
       setStreamingText("");
       setActiveSubagents([]);
@@ -99,7 +154,7 @@ export function ChatPanel() {
             }
             break;
           case "done":
-            setMessages((prev) => [...prev, { role: "assistant", content: event.text }]);
+            setMessages((prev) => [...prev, { role: "assistant", content: event.response }]);
             setStreamingText("");
             break;
           case "error":
@@ -112,9 +167,12 @@ export function ChatPanel() {
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: nextHistory }),
+          body: JSON.stringify({ threadId, message: userText }),
           signal: controller.signal,
         });
+        if (res.status === 409) {
+          throw new Error("Still working on your last question for this session — try again in a moment.");
+        }
         if (!res.ok || !res.body) {
           throw new Error(`Chat request failed: ${res.status}`);
         }
@@ -148,14 +206,24 @@ export function ChatPanel() {
         abortRef.current = null;
       }
     },
-    [messages, isStreaming],
+    [threadId, isStreaming],
   );
 
   const cancel = useCallback(() => abortRef.current?.abort(), []);
 
   return (
     <div className="flex h-full flex-col gap-3">
-      <h2 className="text-lg font-semibold">Chat</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Chat</h2>
+        <button
+          type="button"
+          onClick={startNewChat}
+          disabled={isStreaming}
+          className="rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-slate-200 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
+        >
+          New chat
+        </button>
+      </div>
 
       {activeSubagents.map((s) => (
         <div
