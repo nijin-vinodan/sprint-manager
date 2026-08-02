@@ -32,7 +32,7 @@
   "include": [
     "app/**/*.ts",
     "app/**/*.tsx",
-    "dist/**/*.d.ts",
+    "src/**/*.ts",
     "next-env.d.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"

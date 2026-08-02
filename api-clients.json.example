@@ -1,0 +1,10 @@
+{
+  "replace-with-a-long-random-secret-per-app": {
+    "appName": "dashboard",
+    "description": "The Next.js dashboard's chat panel"
+  },
+  "another-long-random-secret": {
+    "appName": "some-other-app",
+    "description": "Whatever other app calls this agent"
+  }
+}
