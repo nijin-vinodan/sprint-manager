@@ -13,7 +13,8 @@
     "server:start": "node dist/server/index.js",
     "dashboard:dev": "next dev",
     "dashboard:build": "next build",
-    "dashboard:start": "next start"
+    "dashboard:start": "next start",
+    "loadtest": "tsx scripts/loadtest.ts"
   },
   "dependencies": {
     "@fastify/sensible": "^6.0.4",
