@@ -47,6 +47,34 @@ interface ActiveSubagent {
   path: string[];
 }
 
+// Shared by a fresh send() and the resume-after-refresh effect below — both
+// consume the exact same SSE frame format, so there's one parsing loop rather
+// than two copies that could drift.
+async function consumeSseStream(
+  body: ReadableStream<Uint8Array>,
+  onEvent: (event: SseEvent) => void,
+): Promise<void> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const frames = buffer.split("\n\n");
+    buffer = frames.pop() ?? "";
+
+    for (const frame of frames) {
+      const dataLine = frame.split("\n").find((l) => l.startsWith("data: "));
+      if (!dataLine) continue;
+      const event: SseEvent = JSON.parse(dataLine.slice("data: ".length));
+      onEvent(event);
+    }
+  }
+}
+
 export function ChatPanel() {
   // threadId persists in localStorage across refreshes, so the standalone
   // agent server's checkpointer can recall prior turns — the message history
@@ -90,6 +118,84 @@ export function ChatPanel() {
     };
   }, [threadId]);
 
+  const handleEvent = useCallback((event: SseEvent) => {
+    switch (event.type) {
+      case "subagent_start":
+        setActiveSubagents((prev) => [...prev, { name: event.name, path: event.path }]);
+        break;
+      case "subagent_end":
+        setActiveSubagents((prev) => prev.filter((s) => s.name !== event.name));
+        if (event.error) {
+          setToolActivity((prev) => [...prev, `${event.name} failed: ${event.error}`]);
+        }
+        break;
+      case "tool_call":
+        if (event.name === "write_todos") {
+          const todos = (event.input as { todos?: TodoItem[] } | undefined)?.todos;
+          if (Array.isArray(todos)) setPlan(todos);
+          break;
+        } else {
+          console.log("No write_todos event, event.input:", event.input);
+        }
+        setToolActivity((prev) => [
+          ...prev,
+          `${event.path.join(" > ") || "orchestrator"}: calling ${event.name}`,
+        ]);
+        break;
+      case "tool_result":
+        setToolActivity((prev) => [
+          ...prev,
+          `${event.path.join(" > ") || "orchestrator"}: ${event.name} ${event.status}`,
+        ]);
+        break;
+      case "token":
+        if (event.path.length === 0) {
+          setStreamingText((prev) => prev + event.text);
+        }
+        break;
+      case "done":
+        setMessages((prev) => [...prev, { role: "assistant", content: event.response }]);
+        setStreamingText("");
+        break;
+      case "error":
+        setError(event.message);
+        break;
+    }
+  }, []);
+
+  // Resumes a token-level replay of an in-flight run after a page refresh:
+  // the server keeps a disconnected run going and buffers every emitted
+  // event, so on remount we just try to reattach — a 204 (no active run)
+  // means there's nothing to resume, and the existing history effect above
+  // already covers any turn that had already completed.
+  useEffect(() => {
+    if (!threadId) return;
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch(`/api/chat/stream?threadId=${encodeURIComponent(threadId)}`, {
+          signal: controller.signal,
+        });
+        if (res.status === 204 || !res.body) return;
+
+        setIsStreaming(true);
+        abortRef.current = controller;
+        try {
+          await consumeSseStream(res.body, handleEvent);
+        } finally {
+          setIsStreaming(false);
+          setActiveSubagents([]);
+          abortRef.current = null;
+        }
+      } catch (err) {
+        if ((err as Error).name !== "AbortError") {
+          setError(err instanceof Error ? err.message : String(err));
+        }
+      }
+    })();
+    return () => controller.abort();
+  }, [threadId, handleEvent]);
+
   const startNewChat = useCallback(() => {
     const fresh = crypto.randomUUID();
     localStorage.setItem(THREAD_ID_KEY, fresh);
@@ -118,51 +224,6 @@ export function ChatPanel() {
       const controller = new AbortController();
       abortRef.current = controller;
 
-      function handleEvent(event: SseEvent) {
-        switch (event.type) {
-          case "subagent_start":
-            setActiveSubagents((prev) => [...prev, { name: event.name, path: event.path }]);
-            break;
-          case "subagent_end":
-            setActiveSubagents((prev) => prev.filter((s) => s.name !== event.name));
-            if (event.error) {
-              setToolActivity((prev) => [...prev, `${event.name} failed: ${event.error}`]);
-            }
-            break;
-          case "tool_call":
-            if (event.name === "write_todos") {
-              const todos = (event.input as { todos?: TodoItem[] } | undefined)?.todos;
-              if (Array.isArray(todos)) setPlan(todos);
-              break;
-            } else {
-              console.log("No write_todos event, event.input:", event.input);
-            }
-            setToolActivity((prev) => [
-              ...prev,
-              `${event.path.join(" > ") || "orchestrator"}: calling ${event.name}`,
-            ]);
-            break;
-          case "tool_result":
-            setToolActivity((prev) => [
-              ...prev,
-              `${event.path.join(" > ") || "orchestrator"}: ${event.name} ${event.status}`,
-            ]);
-            break;
-          case "token":
-            if (event.path.length === 0) {
-              setStreamingText((prev) => prev + event.text);
-            }
-            break;
-          case "done":
-            setMessages((prev) => [...prev, { role: "assistant", content: event.response }]);
-            setStreamingText("");
-            break;
-          case "error":
-            setError(event.message);
-            break;
-        }
-      }
-
       try {
         const res = await fetch("/api/chat", {
           method: "POST",
@@ -177,25 +238,7 @@ export function ChatPanel() {
           throw new Error(`Chat request failed: ${res.status}`);
         }
 
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-
-          const frames = buffer.split("\n\n");
-          buffer = frames.pop() ?? "";
-
-          for (const frame of frames) {
-            const dataLine = frame.split("\n").find((l) => l.startsWith("data: "));
-            if (!dataLine) continue;
-            const event: SseEvent = JSON.parse(dataLine.slice("data: ".length));
-            handleEvent(event);
-          }
-        }
+        await consumeSseStream(res.body, handleEvent);
       } catch (err) {
         if ((err as Error).name !== "AbortError") {
           setError(err instanceof Error ? err.message : String(err));
@@ -206,10 +249,21 @@ export function ChatPanel() {
         abortRef.current = null;
       }
     },
-    [threadId, isStreaming],
+    [threadId, isStreaming, handleEvent],
   );
 
-  const cancel = useCallback(() => abortRef.current?.abort(), []);
+  const cancel = useCallback(() => {
+    abortRef.current?.abort();
+    if (threadId) {
+      fetch("/api/chat/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ threadId }),
+      }).catch(() => {
+        // Best-effort — the local abort above already stops the UI regardless.
+      });
+    }
+  }, [threadId]);
 
   return (
     <div className="flex h-full flex-col gap-3">

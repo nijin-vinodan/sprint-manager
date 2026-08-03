@@ -4,6 +4,9 @@
 // gets the same rich event stream whether the agent runs in-process or, as
 // now, behind this standalone server.
 
+import { insertStreamChunk } from "./streamChunks.js";
+import { broadcastLocal } from "./runRegistry.js";
+
 export type SseEvent =
   | { type: "subagent_start"; path: string[]; name: string }
   | { type: "subagent_end"; path: string[]; name: string; error?: string }
@@ -23,6 +26,28 @@ export type SseEvent =
 
 export function sseFrame(event: SseEvent): string {
   return `data: ${JSON.stringify(event)}\n\n`;
+}
+
+/**
+ * Builds a persisting emit function for a run: every event is durably
+ * recorded to stream_chunks (so a reconnecting client can replay it) and
+ * fanned out to any same-replica resume subscribers, in addition to whatever
+ * the caller does with it (e.g. writing to the owning reply). Ordering is
+ * preserved because every event for a run flows through this single function,
+ * called synchronously from one run loop — the persist write is
+ * fire-and-forget from the caller's perspective, not awaited before the next
+ * event is produced.
+ */
+export function createRunEmitter(threadId: string, runId: string): (event: SseEvent) => void {
+  let seq = 0;
+  return (event: SseEvent) => {
+    const mySeq = seq++;
+    void insertStreamChunk(runId, mySeq, threadId, event).catch(() => {
+      // Best-effort persistence — a failed write only degrades resume for
+      // this event, it must never break the live stream to the owning reply.
+    });
+    broadcastLocal(runId, mySeq, event);
+  };
 }
 
 export function extractText(content: unknown): string {

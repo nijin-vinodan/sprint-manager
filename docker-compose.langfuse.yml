@@ -8,6 +8,8 @@
 # 5432/6379/8123/9090/9091/3000) to avoid clashing with other local projects/services on this machine.
 # Container-to-container traffic (e.g. langfuse-web -> postgres:5432) is unaffected — only the
 # host-side port mappings changed.
+name: sprint-manager-agent
+
 services:
   langfuse-worker:
     image: docker.io/langfuse/langfuse-worker:3
