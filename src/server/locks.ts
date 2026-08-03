@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { FastifyReply } from "fastify";
 import { pool } from "./db.js";
 import { serverConfig } from "./config.js";
+import { ensureStreamChunksTable } from "./streamChunks.js";
 
 let migrated: Promise<void> | undefined;
 
@@ -55,24 +56,43 @@ export async function acquireLock(threadId: string, lockedBy: string): Promise<b
   return result.rowCount === 1;
 }
 
+export interface AcquireLockResult {
+  acquired: boolean;
+  /** The lock-owner UUID, doubling as this run's run_id for stream_chunks — only set when acquired. */
+  runId?: string;
+}
+
 /**
  * Shared by /invoke and /invoke/stream: generates a lock owner, tries to
  * acquire the thread's lock, and sends the 409 conflict reply itself if it
- * can't. Returns whether the caller now holds the lock and should proceed.
+ * can't. Returns whether the caller now holds the lock (and its run_id) and
+ * should proceed.
  */
-export async function acquireLockOrReject(threadId: string, reply: FastifyReply): Promise<boolean> {
+export async function acquireLockOrReject(threadId: string, reply: FastifyReply): Promise<AcquireLockResult> {
   const lockOwner = randomUUID();
   const acquired = await acquireLock(threadId, lockOwner);
   if (!acquired) {
     reply.code(409).send({ error: "run already in progress for this thread", threadId });
+    return { acquired: false };
   }
-  return acquired;
+  return { acquired: true, runId: lockOwner };
 }
 
-/** Releases a thread's lock. Safe to call even if the lock was never acquired, or already released. */
+/**
+ * Releases a thread's lock. Safe to call even if the lock was never acquired, or already released.
+ *
+ * Also sweeps stream_chunks rows older than streamChunkTtlHours — piggybacked
+ * here (once per completed run) rather than on a separate scheduler, mirroring
+ * how lockStaleSeconds already handles a crashed replica's stale lock rows.
+ */
 export async function releaseLock(threadId: string): Promise<void> {
   await pool.query(
     `UPDATE thread_locks SET status = 'released', updated_at = now() WHERE thread_id = $1;`,
     [threadId],
+  );
+  await ensureStreamChunksTable();
+  await pool.query(
+    `DELETE FROM stream_chunks WHERE created_at < now() - ($1 || ' hours')::interval;`,
+    [serverConfig.streamChunkTtlHours],
   );
 }

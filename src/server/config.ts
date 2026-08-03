@@ -17,4 +17,8 @@ export const serverConfig = {
   // reclaim it — guards against a lock stuck forever because a replica crashed
   // mid-run and never reached its `finally` release.
   lockStaleSeconds: Number(process.env.LOCK_STALE_SECONDS ?? 600),
+  // How long a completed/in-progress run's stream_chunks rows are kept around
+  // so a client can resume a token-level replay after a refresh — swept on
+  // every releaseLock call rather than via a separate scheduler.
+  streamChunkTtlHours: Number(process.env.STREAM_CHUNK_TTL_HOURS ?? 12),
 } as const;

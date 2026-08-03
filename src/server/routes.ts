@@ -1,11 +1,15 @@
 import type { FastifyInstance } from "fastify";
 import { getAgent } from "./agentRuntime.js";
 import { getCheckpointer } from "./checkpointer.js";
+import { pool } from "./db.js";
+import { serverConfig } from "./config.js";
 import { acquireLockOrReject, releaseLock } from "./locks.js";
 import { requireApiKey } from "./auth.js";
 import { langfuseCallbacks, flushTracing } from "../tracing.js";
 import { debugCallbacks } from "../debugLogger.js";
-import { extractText, sseFrame, pumpRun, checkpointMessagesToHistory } from "./sse.js";
+import { extractText, sseFrame, pumpRun, checkpointMessagesToHistory, createRunEmitter, type SseEvent } from "./sse.js";
+import { readStreamChunks } from "./streamChunks.js";
+import { registerRun, unregisterRun, cancelRun, subscribeToRun } from "./runRegistry.js";
 import { getActiveSprint, getSprintIssues } from "../tools/jira.js";
 import { getOpenPullRequests, getRecentCommits } from "../tools/github.js";
 
@@ -29,6 +33,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
   app.get("/health", async () => ({ status: "ok" }));
 
   app.register(async (protectedRoutes) => {
+    // addHook is fastify's way of adding middleware to a route group; this one checks the x-api-key header.
     protectedRoutes.addHook("onRequest", requireApiKey);
 
     protectedRoutes.get("/threads/:threadId/history", async (request, reply) => {
@@ -91,7 +96,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
         return reply.code(400).send({ error: err instanceof Error ? err.message : String(err) });
       }
 
-      if (!(await acquireLockOrReject(body.threadId, reply))) return;
+      if (!(await acquireLockOrReject(body.threadId, reply)).acquired) return;
 
       request.log.info(
         { app: request.apiClient?.appName, threadId: body.threadId },
@@ -129,10 +134,12 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
         return reply.code(400).send({ error: err instanceof Error ? err.message : String(err) });
       }
 
-      if (!(await acquireLockOrReject(body.threadId, reply))) return;
+      const lockResult = await acquireLockOrReject(body.threadId, reply);
+      if (!lockResult.acquired) return;
+      const runId = lockResult.runId!;
 
       request.log.info(
-        { app: request.apiClient?.appName, threadId: body.threadId },
+        { app: request.apiClient?.appName, threadId: body.threadId, runId },
         "invoke/stream: run started",
       );
 
@@ -144,18 +151,32 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
         "X-Accel-Buffering": "no",
       });
 
+      // Persists every event to stream_chunks and fans it out to any
+      // same-replica resume subscribers, in addition to writing it to this
+      // (the original) reply below.
+      const persist = createRunEmitter(body.threadId, runId);
+
       let closed = false;
-      const emit = (event: Parameters<typeof sseFrame>[0]) => {
-        if (closed) return;
-        reply.raw.write(sseFrame(event));
+      const emit = (event: SseEvent) => {
+        persist(event);
+        if (!closed) reply.raw.write(sseFrame(event));
       };
 
       const heartbeat = setInterval(() => {
         if (!closed) reply.raw.write(`: heartbeat\n\n`);
       }, 15_000);
 
+      // The run itself is no longer tied to this reply's lifecycle: a client
+      // disconnect (e.g. a page refresh) only stops writes to this dead
+      // socket below — the agent keeps running to completion server-side so
+      // a reconnecting client can resume it via GET /threads/:threadId/stream.
+      // The abort controller/signal stays wired up for the explicit
+      // /threads/:threadId/cancel path instead.
       const abortController = new AbortController();
-      request.raw.on("close", () => abortController.abort());
+      registerRun(runId, abortController);
+      request.raw.on("close", () => {
+        closed = true;
+      });
 
       try {
         const agent = await getAgent();
@@ -182,12 +203,118 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
         );
         emit({ type: "error", message: err instanceof Error ? err.message : String(err) });
       } finally {
-        closed = true;
         clearInterval(heartbeat);
+        unregisterRun(runId);
         await releaseLock(body.threadId);
         await flushTracing();
         reply.raw.end();
       }
+    });
+
+    protectedRoutes.get("/threads/:threadId/stream", async (request, reply) => {
+      const { threadId } = request.params as { threadId: string };
+      if (typeof threadId !== "string" || threadId.length === 0) {
+        return reply.code(400).send({ error: '"threadId" is required and must be a non-empty string' });
+      }
+
+      const lockRow = await pool.query<{ locked_by: string }>(
+        `SELECT locked_by FROM thread_locks
+         WHERE thread_id = $1 AND status = 'running' AND updated_at > now() - ($2 || ' seconds')::interval;`,
+        [threadId, serverConfig.lockStaleSeconds],
+      );
+      const runId = lockRow.rows[0]?.locked_by;
+      if (!runId) {
+        // No active run for this thread — nothing to resume; the client
+        // falls back to its existing completed-turn history fetch.
+        return reply.code(204).send();
+      }
+
+      reply.hijack();
+      reply.raw.writeHead(200, {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no",
+      });
+
+      let closed = false;
+      let lastSeqSent = -1;
+      const buffered: Array<{ seq: number; event: SseEvent }> = [];
+      let live = false;
+
+      const writeEvent = (event: SseEvent) => {
+        if (closed) return;
+        reply.raw.write(sseFrame(event));
+        if (event.type === "done" || event.type === "error") {
+          closed = true;
+          unsubscribe();
+          reply.raw.end();
+        }
+      };
+
+      // Subscribe before reading the backlog so any chunk emitted while the
+      // backlog query is in flight is buffered here rather than lost.
+      const unsubscribe = subscribeToRun(runId, (seq, event) => {
+        if (!live) {
+          buffered.push({ seq, event });
+          return;
+        }
+        if (seq <= lastSeqSent) return;
+        lastSeqSent = seq;
+        writeEvent(event);
+      });
+
+      request.raw.on("close", () => {
+        closed = true;
+        unsubscribe();
+      });
+
+      try {
+        const backlog = await readStreamChunks(runId);
+        for (const row of backlog) {
+          if (row.seq <= lastSeqSent) continue;
+          lastSeqSent = row.seq;
+          writeEvent(row.event);
+          if (closed) return;
+        }
+        live = true;
+        for (const row of buffered) {
+          if (row.seq <= lastSeqSent) continue;
+          lastSeqSent = row.seq;
+          writeEvent(row.event);
+          if (closed) return;
+        }
+      } catch (err) {
+        request.log.error(
+          { app: request.apiClient?.appName, threadId, err },
+          "stream (resume): backlog read failed",
+        );
+        if (!closed) {
+          writeEvent({ type: "error", message: err instanceof Error ? err.message : String(err) });
+        }
+      }
+    });
+
+    protectedRoutes.post("/threads/:threadId/cancel", async (request, reply) => {
+      const { threadId } = request.params as { threadId: string };
+      if (typeof threadId !== "string" || threadId.length === 0) {
+        return reply.code(400).send({ error: '"threadId" is required and must be a non-empty string' });
+      }
+
+      const lockRow = await pool.query<{ locked_by: string }>(
+        `SELECT locked_by FROM thread_locks WHERE thread_id = $1 AND status = 'running';`,
+        [threadId],
+      );
+      const runId = lockRow.rows[0]?.locked_by;
+      if (!runId) {
+        return reply.send({ cancelled: false, reason: "no active run for this thread" });
+      }
+
+      // Same-replica only in Milestone 1 — if the run lives on a different
+      // replica this is a documented no-op (Milestone 2 adds a pg_notify
+      // fallback for cross-replica cancel).
+      const cancelled = cancelRun(runId);
+      return reply.send({ cancelled });
     });
   });
 }
