@@ -14,7 +14,10 @@
     "dashboard:dev": "next dev",
     "dashboard:build": "next build",
     "dashboard:start": "next start",
-    "loadtest": "tsx scripts/loadtest.ts"
+    "loadtest": "tsx scripts/loadtest.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepare": "husky"
   },
   "dependencies": {
     "@fastify/sensible": "^6.0.4",
@@ -50,7 +53,9 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "husky": "^9.1.7",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.4"
   }
 }
