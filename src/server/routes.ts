@@ -205,8 +205,19 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
       } finally {
         clearInterval(heartbeat);
         unregisterRun(runId);
-        await releaseLock(body.threadId);
-        await flushTracing();
+        // A tracing/lock-release failure (e.g. Langfuse unreachable) must never
+        // prevent reply.raw.end() below — otherwise the chunked response is left
+        // open forever and the client's fetch stream never resolves.
+        try {
+          await releaseLock(body.threadId);
+        } catch (err) {
+          request.log.error({ app: request.apiClient?.appName, threadId: body.threadId, err }, "invoke/stream: releaseLock failed");
+        }
+        try {
+          await flushTracing();
+        } catch (err) {
+          request.log.error({ app: request.apiClient?.appName, threadId: body.threadId, err }, "invoke/stream: flushTracing failed");
+        }
         reply.raw.end();
       }
     });
