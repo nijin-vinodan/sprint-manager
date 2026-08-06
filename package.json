@@ -15,6 +15,7 @@
     "dashboard:build": "next build",
     "dashboard:start": "next start",
     "loadtest": "tsx scripts/loadtest.ts",
+    "seed:synthetic-resolution": "tsx scripts/generateSyntheticResolutionHistory.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "prepare": "husky"

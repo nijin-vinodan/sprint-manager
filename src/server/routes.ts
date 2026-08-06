@@ -12,6 +12,10 @@ import { readStreamChunks } from "./streamChunks.js";
 import { registerRun, unregisterRun, cancelRun, subscribeToRun } from "./runRegistry.js";
 import { getActiveSprint, getSprintIssues } from "../tools/jira.js";
 import { getOpenPullRequests, getRecentCommits } from "../tools/github.js";
+import { config } from "../config.js";
+import { getIssueComments, getIssuePredictionData, searchIssueKeys } from "../commentEvaluator/jiraClient.js";
+import { extractFeatures, resolutionDaysFor } from "../featureExtraction.js";
+import { insertResolutionRecord } from "./resolutionHistory.js";
 
 interface InvokeBody {
   threadId: string;
@@ -84,6 +88,41 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
         return reply.send({ active: true, sprint, tickets: ticketsWithLinks, prs, commits });
       } catch (err) {
         request.log.error({ app: request.apiClient?.appName, err }, "sprint: fetch failed");
+        return reply.code(500).send({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    // Called on an interval by app/api/digest's resolution-collector scheduler
+    // (no cron/webhook infra exists in this repo — see CLAUDE.md). Finds SMA
+    // issues that recently transitioned to Done/Closed and appends them to
+    // issue_resolution_history as source='real'. Upsert-based, so an overlap
+    // between consecutive ticks re-processing the same issue is harmless.
+    protectedRoutes.post("/internal/collect-resolution-history", async (request, reply) => {
+      const { lookbackHours } = (request.body ?? {}) as { lookbackHours?: number };
+      const hours = typeof lookbackHours === "number" && lookbackHours > 0 ? lookbackHours : 6;
+
+      try {
+        const statusList = config.jira.doneStatuses.map((status) => `"${status}"`).join(", ");
+        const jql = `project = ${config.jira.projectKey} AND status in (${statusList}) AND statusCategoryChangedDate >= "-${hours}h"`;
+        const issueKeys = await searchIssueKeys(jql);
+
+        let inserted = 0;
+        for (const issueKey of issueKeys) {
+          const [data, comments] = await Promise.all([getIssuePredictionData(issueKey), getIssueComments(issueKey)]);
+          const resolutionDays = resolutionDaysFor(data);
+          if (resolutionDays === null) continue;
+
+          const features = extractFeatures({ issueKey, data, commentCount: comments.length });
+          await insertResolutionRecord({ ...features, resolutionDays, source: "real", closedAt: data.resolutionDate });
+          inserted++;
+        }
+
+        return reply.send({ inserted, checked: issueKeys.length });
+      } catch (err) {
+        request.log.error(
+          { app: request.apiClient?.appName, err },
+          "collect-resolution-history: failed",
+        );
         return reply.code(500).send({ error: err instanceof Error ? err.message : String(err) });
       }
     });
