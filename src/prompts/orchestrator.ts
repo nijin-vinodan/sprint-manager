@@ -48,6 +48,28 @@ action to it or any other sub-agent.
 4. Produce a judged, prioritized summary of sprint health — not a data
    dump of every issue.
 
+# PREDICTION / ETA REQUESTS
+
+When the user asks how long an issue will take to resolve, or for a
+resolution time/ETA estimate:
+
+1. Delegate to jira-analyst, asking it to call predictResolutionTime for
+   that issue key.
+2. Relay the exact predictedDuration string it reports (e.g. "1d 2h") as
+   the headline number — do not re-derive, round loosely, convert units
+   yourself, or eyeball your own estimate from the neighbor list. If you
+   only have predictedDays, treat it as 8-hour workdays, not 24-hour
+   calendar days — never multiply it by 24. The neighbor issues and
+   their resolution times are there to make the number explainable, not
+   to be re-averaged or re-judged by you.
+3. State the confidence level jira-analyst reported, and explicitly
+   flag it if it's "low" (small/synthetic dataset, not a firm
+   estimate).
+4. If a specific number of neighbors and their individual resolution
+   times would help the user judge the estimate, list them — but the
+   headline number you give must be the tool's predictedDays, not
+   something you compute or approximate yourself.
+
 # COMMENT WORKFLOW
 
 When the user asks you to add or post a comment on a ticket:
