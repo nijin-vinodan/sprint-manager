@@ -113,6 +113,28 @@ interface JiraIssueLinkPayload {
   outwardIssue?: { key: string; fields: { status: { name: string } } };
 }
 
+export interface StatusChange {
+  fromStatus: string | null;
+  toStatus: string;
+  changedAt: string;
+}
+
+export interface IssuePredictionData {
+  issueType: string;
+  priority: string;
+  labels: string[];
+  assignee: string | null;
+  /** Original Estimate from Jira's time-tracking field, in seconds — used as the story-points proxy (no dedicated Story Points field configured on this instance). */
+  originalEstimateSeconds: number | null;
+  /** Logged work (time-tracking "Time Spent"), in seconds — used as the effort-based resolution-time metric when present. Null if no worklog was ever added. */
+  timeSpentSeconds: number | null;
+  created: string;
+  resolutionDate: string | null;
+  status: string;
+  issueLinks: IssueLink[];
+  statusHistory: StatusChange[];
+}
+
 export async function getIssueChangelog(
   issueKey: string,
 ): Promise<{ assigneeHistory: AssigneeChange[]; issueLinks: IssueLink[] }> {
@@ -144,4 +166,89 @@ export async function getIssueChangelog(
   });
 
   return { assigneeHistory, issueLinks };
+}
+
+function issueLinksFromPayload(links: JiraIssueLinkPayload[]): IssueLink[] {
+  return links.map((link) => {
+    const related = link.inwardIssue ?? link.outwardIssue;
+    const type = link.inwardIssue ? link.type.inward : link.type.outward;
+    return {
+      type,
+      linkedIssueKey: related!.key,
+      linkedIssueStatus: related!.fields.status.name,
+    };
+  });
+}
+
+/** One fetch bundling everything featureExtraction.ts needs beyond what getActiveSprint/getSprintIssues already expose. */
+export async function getIssuePredictionData(issueKey: string): Promise<IssuePredictionData> {
+  const issue = await jiraFetch<{
+    fields: {
+      issuetype: { name: string };
+      priority: { name: string } | null;
+      labels: string[];
+      assignee: { displayName: string } | null;
+      timetracking?: { originalEstimateSeconds?: number; timeSpentSeconds?: number };
+      created: string;
+      resolutiondate: string | null;
+      status: { name: string };
+      issuelinks: JiraIssueLinkPayload[];
+    };
+    changelog: { histories: JiraChangelogHistory[] };
+  }>(
+    `/rest/api/3/issue/${issueKey}?fields=issuetype,priority,labels,assignee,timetracking,created,resolutiondate,status,issuelinks&expand=changelog`,
+  );
+
+  const f = issue.fields;
+
+  const statusHistory: StatusChange[] = issue.changelog.histories
+    .flatMap((history) =>
+      history.items
+        .filter((item) => item.field === "status")
+        .map((item) => ({
+          fromStatus: item.fromString,
+          toStatus: item.toString ?? "",
+          changedAt: history.created,
+        })),
+    )
+    .sort((a, b) => a.changedAt.localeCompare(b.changedAt));
+
+  return {
+    issueType: f.issuetype.name,
+    priority: f.priority?.name ?? "None",
+    labels: f.labels,
+    assignee: f.assignee?.displayName ?? null,
+    originalEstimateSeconds: f.timetracking?.originalEstimateSeconds ?? null,
+    timeSpentSeconds: f.timetracking?.timeSpentSeconds ?? null,
+    created: f.created,
+    resolutionDate: f.resolutiondate,
+    status: f.status.name,
+    issueLinks: issueLinksFromPayload(f.issuelinks),
+    statusHistory,
+  };
+}
+
+/**
+ * JQL-based search. Uses /rest/api/3/search/jql (the replacement for the removed
+ * /rest/api/3/search endpoint), which pages via an opaque nextPageToken cursor
+ * rather than the startAt/total convention every other list endpoint here uses,
+ * so it can't share jiraFetchAllPages. Returns just issue keys — callers fetch
+ * full data per key via getIssuePredictionData.
+ */
+export async function searchIssueKeys(jql: string): Promise<string[]> {
+  const keys: string[] = [];
+  let nextPageToken: string | undefined;
+  while (true) {
+    const params = new URLSearchParams({ jql, fields: "key" });
+    if (nextPageToken) params.set("nextPageToken", nextPageToken);
+
+    const data = await jiraFetch<{ issues: { key: string }[]; nextPageToken?: string; isLast?: boolean }>(
+      `/rest/api/3/search/jql?${params.toString()}`,
+    );
+    keys.push(...data.issues.map((issue) => issue.key));
+
+    if (data.isLast || !data.nextPageToken) break;
+    nextPageToken = data.nextPageToken;
+  }
+  return keys;
 }
