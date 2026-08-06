@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { ChatPanel } from "./components/ChatPanel";
 import { SprintBoard } from "./components/SprintBoard";
 import { SprintHealthDigest } from "./components/SprintHealthDigest";
-import { TaskGraph } from "./components/TaskGraph";
+import { ResolutionPredictor } from "./components/ResolutionPredictor";
 import { Sidebar } from "./components/Sidebar";
 import { Tabs, type TabDef } from "./components/Tabs";
 import { DigestAlertTracker } from "./components/DigestAlertTracker";
@@ -26,7 +26,7 @@ export default function DashboardPage() {
   const tabs: TabDef[] = [
     { id: "board", label: "Board", content: <SprintBoard /> },
     { id: "digest", label: "Digest", content: <SprintHealthDigest />, showAlertDot: hasNewDigest },
-    { id: "graph", label: "Graph", content: <TaskGraph /> },
+    { id: "predict", label: "Predict", content: <ResolutionPredictor /> },
   ];
 
   return (

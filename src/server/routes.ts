@@ -15,7 +15,10 @@ import { getOpenPullRequests, getRecentCommits } from "../tools/github.js";
 import { config } from "../config.js";
 import { getIssueComments, getIssuePredictionData, searchIssueKeys } from "../commentEvaluator/jiraClient.js";
 import { extractFeatures, resolutionDaysFor } from "../featureExtraction.js";
-import { insertResolutionRecord } from "./resolutionHistory.js";
+import { insertResolutionRecord, getResolutionHistory } from "./resolutionHistory.js";
+import { predictResolutionDays } from "../knn.js";
+import { scoreConfidence } from "../confidence.js";
+import { thresholds } from "../config.js";
 
 interface InvokeBody {
   threadId: string;
@@ -88,6 +91,68 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
         return reply.send({ active: true, sprint, tickets: ticketsWithLinks, prs, commits });
       } catch (err) {
         request.log.error({ app: request.apiClient?.appName, err }, "sprint: fetch failed");
+        return reply.code(500).send({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    // Live view of the existing resolution-time k-NN predictor
+    // (src/knn.ts + issue_resolution_history), for a dashboard page rather
+    // than the ad hoc one-off analysis this was previously only available
+    // as. Returns the full ranked real+synthetic candidate pool (not just
+    // the top-k actually used), so the frontend can render every candidate
+    // in a scatter and ring/label just the ones the prediction used.
+    protectedRoutes.get("/predict/:issueKey", async (request, reply) => {
+      const { issueKey } = request.params as { issueKey: string };
+      if (typeof issueKey !== "string" || issueKey.length === 0) {
+        return reply.code(400).send({ error: '"issueKey" is required' });
+      }
+
+      const query = request.query as { k?: string; pool?: string };
+
+      const kRequested = query.k !== undefined ? Number(query.k) : thresholds.K_NEIGHBORS;
+      if (!Number.isInteger(kRequested) || kRequested < 1 || kRequested > 15) {
+        return reply.code(400).send({ error: '"k" must be an integer between 1 and 15' });
+      }
+
+      const poolMode = query.pool ?? "all";
+      if (poolMode !== "all" && poolMode !== "real" && poolMode !== "synthetic") {
+        return reply.code(400).send({ error: '"pool" must be one of "all", "real", "synthetic"' });
+      }
+
+      try {
+        const [data, comments] = await Promise.all([getIssuePredictionData(issueKey), getIssueComments(issueKey)]);
+        const issueFeatures = extractFeatures({ issueKey, data, commentCount: comments.length });
+
+        const history = await getResolutionHistory();
+        // Leave-one-out: if this issue has already been backfilled into
+        // issue_resolution_history (i.e. it's Done and part of the training
+        // pool), it must not be allowed to appear as its own nearest
+        // neighbor — a near-zero self-distance would otherwise dominate the
+        // prediction and make it meaningless as a validation case.
+        const historyExcludingTarget = {
+          real: poolMode === "synthetic" ? [] : history.real.filter((r) => r.issueKey !== issueKey),
+          synthetic: poolMode === "real" ? [] : history.synthetic,
+        };
+        const prediction = predictResolutionDays(
+          issueFeatures,
+          historyExcludingTarget,
+          kRequested,
+          thresholds.REAL_NEIGHBOR_DISTANCE_THRESHOLD,
+        );
+        const confidence = scoreConfidence(prediction.neighbors, kRequested);
+
+        return reply.send({
+          issueKey,
+          predictedDays: prediction.predictedDays,
+          confidence,
+          kRequested,
+          poolMode,
+          usedFallbackToSynthetic: prediction.usedFallbackToSynthetic,
+          usedNeighborKeys: prediction.neighbors.map((n) => n.issueKey),
+          allRanked: prediction.rankedCandidates,
+        });
+      } catch (err) {
+        request.log.error({ app: request.apiClient?.appName, issueKey, err }, "predict: fetch failed");
         return reply.code(500).send({ error: err instanceof Error ? err.message : String(err) });
       }
     });

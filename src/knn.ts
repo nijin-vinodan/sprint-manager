@@ -11,6 +11,11 @@ export interface Neighbor {
 export interface PredictionResult {
   predictedDays: number | null;
   neighbors: Neighbor[];
+  // Every real+synthetic candidate, scored and sorted (same tie-break as
+  // `neighbors`), before the top-k slice — added for callers that need to
+  // visualize/explain the full candidate pool (e.g. a nearest-neighbor
+  // scatter), not just the ones actually averaged.
+  rankedCandidates: Neighbor[];
   usedFallbackToSynthetic: boolean;
 }
 
@@ -105,9 +110,16 @@ export function predictResolutionDays(
 ): PredictionResult {
   const distance = buildDistanceFn([...history.real, ...history.synthetic]);
 
+  // Every candidate is scored regardless of which branch below ends up
+  // being used, so `rankedCandidates` is always the complete real+synthetic
+  // pool — not just whichever subset the fallback logic happened to touch.
   const realNeighbors = history.real
     .map((candidate) => toNeighbor(candidate, distance(target, candidate)))
     .sort((a, b) => a.distance - b.distance);
+  const syntheticNeighbors = history.synthetic.map((candidate) => toNeighbor(candidate, distance(target, candidate)));
+
+  const rankScore = (n: Neighbor) => (n.source === "real" ? n.distance - REAL_SOURCE_BONUS : n.distance);
+  const rankedCandidates = [...realNeighbors, ...syntheticNeighbors].sort((a, b) => rankScore(a) - rankScore(b));
 
   const hasCloseReal = realNeighbors.some((n) => n.distance <= realDistanceThreshold);
 
@@ -118,20 +130,14 @@ export function predictResolutionDays(
     neighbors = realNeighbors.slice(0, k);
     usedFallbackToSynthetic = false;
   } else {
-    const syntheticNeighbors = history.synthetic.map((candidate) => toNeighbor(candidate, distance(target, candidate)));
-    neighbors = [...realNeighbors, ...syntheticNeighbors]
-      .sort((a, b) => {
-        const scoreA = a.source === "real" ? a.distance - REAL_SOURCE_BONUS : a.distance;
-        const scoreB = b.source === "real" ? b.distance - REAL_SOURCE_BONUS : b.distance;
-        return scoreA - scoreB;
-      })
-      .slice(0, k);
+    neighbors = rankedCandidates.slice(0, k);
     usedFallbackToSynthetic = true;
   }
 
   return {
     predictedDays: neighbors.length > 0 ? weightedAverage(neighbors) : null,
     neighbors,
+    rankedCandidates,
     usedFallbackToSynthetic,
   };
 }

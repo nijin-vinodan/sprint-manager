@@ -41,6 +41,6 @@ export const config = {
 export const thresholds = {
   STALE_TICKET_DAYS: 3,
   STALE_PR_DAYS: 2,
-  K_NEIGHBORS: 3,
+  K_NEIGHBORS: Number(process.env.K_NEIGHBORS ?? 3),
   REAL_NEIGHBOR_DISTANCE_THRESHOLD: 1.5,
 } as const;
