@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { predictResolutionDays } from "../src/knn.js";
-import type { IssueFeatures } from "../src/featureExtraction.js";
+import { predictResolutionDays } from "../src/prediction/knn.js";
+import type { IssueFeatures } from "../src/prediction/featureExtraction.js";
 import type { ResolutionRecord } from "../src/server/resolutionHistory.js";
 
 function target(overrides: Partial<IssueFeatures> = {}): IssueFeatures {
