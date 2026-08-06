@@ -6,6 +6,7 @@ import { extractFeatures, type IssueFeatures } from "./featureExtraction.js";
 import { getResolutionHistory } from "../server/resolutionHistory.js";
 import { predictResolutionDays } from "./knn.js";
 import { scoreConfidence } from "./confidence.js";
+import { formatWorkdayDuration } from "../dateUtils.js";
 
 const featureInputSchema = z.object({
   issueType: z.string(),
@@ -34,9 +35,15 @@ export const predictResolutionTime = tool(
     }
 
     const history = await getResolutionHistory();
+    // Leave-one-out: if this issue is already backfilled into
+    // issue_resolution_history, it must not be allowed to match itself as a
+    // near-zero-distance neighbor (mirrors src/server/routes.ts's /predict route).
+    const historyExcludingTarget = issueKey
+      ? { real: history.real.filter((r) => r.issueKey !== issueKey), synthetic: history.synthetic }
+      : history;
     const prediction = predictResolutionDays(
       issueFeatures,
-      history,
+      historyExcludingTarget,
       thresholds.K_NEIGHBORS,
       thresholds.REAL_NEIGHBOR_DISTANCE_THRESHOLD,
     );
@@ -45,15 +52,20 @@ export const predictResolutionTime = tool(
     return {
       issueKey: resolvedIssueKey,
       predictedDays: prediction.predictedDays,
+      predictedDuration: prediction.predictedDays !== null ? formatWorkdayDuration(prediction.predictedDays) : null,
       confidence,
-      neighbors: prediction.neighbors.map((n) => ({ issueKey: n.issueKey, resolutionDays: n.resolutionDays })),
+      neighbors: prediction.neighbors.map((n) => ({
+        issueKey: n.issueKey,
+        resolutionDays: n.resolutionDays,
+        resolutionDuration: formatWorkdayDuration(n.resolutionDays),
+      })),
       usedFallbackToSynthetic: prediction.usedFallbackToSynthetic,
     };
   },
   {
     name: "predictResolutionTime",
     description:
-      "Predict how many days an issue will take to resolve, using k-NN over historically resolved SMA issues. Pass either issueKey (fetches and extracts features internally) or a raw features object. Returns predictedDays, a confidence level/flag, and the neighbor issues used (issueKey + their actual resolutionDays) so the result is explainable, not a black box.",
+      "Predict how many days an issue will take to resolve, using k-NN over historically resolved SMA issues. Pass either issueKey (fetches and extracts features internally) or a raw features object. Returns predictedDays (in 8-hour workdays — do not convert it yourself, e.g. do not multiply by 24) plus predictedDuration, an already human-readable string (e.g. \"1d 2h\") to quote verbatim instead. Also returns a confidence level/flag and the neighbor issues used (issueKey + their actual resolutionDays/resolutionDuration) so the result is explainable, not a black box.",
     schema: z
       .object({
         issueKey: z

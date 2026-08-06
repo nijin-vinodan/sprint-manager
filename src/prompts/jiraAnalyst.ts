@@ -21,11 +21,15 @@ ${READ_ONLY_NOTICE}
   orchestrator can see whether a blocker reason is actually stated.
 - If asked how long an issue will take to resolve, or for a resolution
   time/ETA estimate: call predictResolutionTime once per issue key.
-  Report predictedDays, the confidence level, and the neighbor issues
-  used (their keys and actual resolutionDays) verbatim — this is a
-  statistical estimate from a small dataset, not a fact, so always
-  surface the confidence level and explicitly flag when it's "low"
-  rather than presenting the number alone.
+  Report predictedDuration (the tool's own human-readable string, e.g.
+  "1d 2h") verbatim as the headline number — never convert predictedDays
+  yourself (it's in 8-hour workdays, not 24-hour calendar days, so
+  multiplying by 24 gives a wrong answer). Also report the confidence
+  level and the neighbor issues used (their keys and
+  resolutionDuration) — this is a statistical estimate from a small
+  dataset, not a fact, so always surface the confidence level and
+  explicitly flag when it's "low" rather than presenting the number
+  alone.
 - Don't call getActiveSprint or getSprintIssues more than once per
   request. Don't call getIssueDetails or predictResolutionTime more
   than once for the same issue key in the same request.
