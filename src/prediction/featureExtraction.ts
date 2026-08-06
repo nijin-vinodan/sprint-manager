@@ -1,5 +1,5 @@
-import type { IssuePredictionData } from "./commentEvaluator/jiraClient.js";
-import { config } from "./config.js";
+import type { IssuePredictionData } from "../commentEvaluator/jiraClient.js";
+import { config } from "../config.js";
 
 export interface IssuePredictionInput {
   issueKey: string;

@@ -1,7 +1,7 @@
 import type { SubAgent } from "deepagents";
 import { config } from "../config.js";
 import { getActiveSprint, getSprintIssues, getIssueDetails } from "../tools/jira.js";
-import { predictResolutionTime } from "../tools/resolutionPrediction.js";
+import { predictResolutionTime } from "../prediction/resolutionPrediction.js";
 import { JIRA_ANALYST_PROMPT } from "../prompts/jiraAnalyst.js";
 
 export const jiraAnalyst: SubAgent = {

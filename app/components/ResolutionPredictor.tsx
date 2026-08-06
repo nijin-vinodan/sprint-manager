@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useIsDarkMode } from "../hooks/useIsDarkMode";
 import { fuzzySearch } from "../lib/fuzzyMatch";
+import { formatWorkdayDuration } from "../lib/formatDuration";
 
 interface RankedCandidate {
   issueKey: string;
@@ -165,12 +166,7 @@ export function ResolutionPredictor() {
         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
           Resolution-time prediction · k-NN neighbor map
         </p>
-        <h2 className="text-lg font-semibold">What predicts a ticket&apos;s estimate</h2>
-        <p className="mt-0.5 max-w-xl text-sm text-slate-500 dark:text-slate-400">
-          Every historical ticket in issue_resolution_history, plotted by distance from the target ticket
-          (x) and how long it actually took to resolve (y). The neighbors actually averaged are ringed and
-          labeled.
-        </p>
+        <h2 className="text-lg font-semibold">Predict a Ticket's Estimate</h2>
       </div>
 
       <div className="relative flex flex-wrap items-center gap-2">
@@ -263,9 +259,9 @@ export function ResolutionPredictor() {
                 Predicted
               </span>
               <span className="text-xl font-bold tabular-nums">
-                {data.predictedDays !== null ? data.predictedDays.toFixed(2) : "—"}
+                {data.predictedDays !== null ? formatWorkdayDuration(data.predictedDays) : "—"}
               </span>
-              <span className="text-xs text-slate-500 dark:text-slate-400">workdays (8h)</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">predicted resolution time</span>
             </div>
             <div className="flex flex-col gap-1 bg-white p-3 dark:bg-slate-900">
               <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
@@ -408,7 +404,7 @@ export function ResolutionPredictor() {
                       fill={colors.refLine}
                       textAnchor="end"
                     >
-                      predicted → {data.predictedDays.toFixed(2)}d
+                      predicted → {formatWorkdayDuration(data.predictedDays)}
                     </text>
                   </>
                 )}
@@ -540,14 +536,14 @@ export function ResolutionPredictor() {
           <p className="text-xs leading-relaxed text-slate-400 dark:text-slate-500">
             Distance is the hand-rolled k-NN metric from{" "}
             <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-[11px] dark:bg-slate-800">
-              src/knn.ts
+              src/prediction/knn.ts
             </code>{" "}
             — normalized story-points/dependency/comment/reopen deltas plus issue-type, priority,
             label-Jaccard, and assignee mismatch. Real neighbors get a small ranking bonus over synthetic
             ones at equal distance; synthetic rows only enter the pool when no real ticket is close enough.
             Confidence (
             <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-[11px] dark:bg-slate-800">
-              src/confidence.ts
+              src/prediction/confidence.ts
             </code>
             ) reflects the closest real neighbor&apos;s distance. If the target ticket is already resolved
             and part of the training history, it&apos;s excluded from its own candidate pool.

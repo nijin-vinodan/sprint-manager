@@ -19,7 +19,7 @@ sequenceDiagram
     participant Script as backfillResolutionHistory.ts<br/>(scripts)
     participant JiraClient as jiraClient.ts<br/>(src/commentEvaluator)
     participant Jira as Jira Cloud API
-    participant FeatureExtraction as featureExtraction.ts<br/>(src)
+    participant FeatureExtraction as featureExtraction.ts<br/>(src/prediction)
     participant ResolutionHistory as resolutionHistory.ts<br/>(src/server)
     participant DB as Postgres<br/>issue_resolution_history
 
@@ -63,7 +63,7 @@ sequenceDiagram
     participant Routes as routes.ts<br/>(src/server)
     participant JiraClient as jiraClient.ts<br/>(src/commentEvaluator)
     participant Jira as Jira Cloud API
-    participant FeatureExtraction as featureExtraction.ts<br/>(src)
+    participant FeatureExtraction as featureExtraction.ts<br/>(src/prediction)
     participant ResolutionHistory as resolutionHistory.ts<br/>(src/server)
     participant DB as Postgres<br/>issue_resolution_history
 
@@ -101,12 +101,12 @@ step inside that larger flow, not a separate HTTP route.
 sequenceDiagram
     participant Orchestrator as orchestrator<br/>(src/agent.ts)
     participant JiraAnalyst as jira-analyst sub-agent<br/>(src/agents/jiraAnalyst.ts)
-    participant PredictTool as predictResolutionTime<br/>(src/tools/resolutionPrediction.ts)
+    participant PredictTool as predictResolutionTime<br/>(src/prediction/resolutionPrediction.ts)
     participant JiraClient as jiraClient.ts<br/>(src/commentEvaluator)
     participant Jira as Jira Cloud API
     participant ResolutionHistory as resolutionHistory.ts<br/>(src/server)
     participant DB as Postgres<br/>issue_resolution_history
-    participant KNN as knn.ts + confidence.ts<br/>(src)
+    participant KNN as knn.ts + confidence.ts<br/>(src/prediction)
 
     Orchestrator->>JiraAnalyst: task({subagent_type:"jira-analyst",<br/>description:"estimate resolution time for SMA-42"})
     JiraAnalyst->>PredictTool: predictResolutionTime.invoke({issueKey:"SMA-42"})

@@ -1,5 +1,5 @@
 import type { IssueFeatures } from "./featureExtraction.js";
-import type { ResolutionRecord } from "./server/resolutionHistory.js";
+import type { ResolutionRecord } from "../server/resolutionHistory.js";
 
 export interface Neighbor {
   issueKey: string;

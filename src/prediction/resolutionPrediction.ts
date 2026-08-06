@@ -2,10 +2,10 @@ import { tool } from "langchain";
 import { z } from "zod";
 import { thresholds } from "../config.js";
 import { getIssueComments, getIssuePredictionData } from "../commentEvaluator/jiraClient.js";
-import { extractFeatures, type IssueFeatures } from "../featureExtraction.js";
+import { extractFeatures, type IssueFeatures } from "./featureExtraction.js";
 import { getResolutionHistory } from "../server/resolutionHistory.js";
-import { predictResolutionDays } from "../knn.js";
-import { scoreConfidence } from "../confidence.js";
+import { predictResolutionDays } from "./knn.js";
+import { scoreConfidence } from "./confidence.js";
 
 const featureInputSchema = z.object({
   issueType: z.string(),

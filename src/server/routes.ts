@@ -14,10 +14,10 @@ import { getActiveSprint, getSprintIssues } from "../tools/jira.js";
 import { getOpenPullRequests, getRecentCommits } from "../tools/github.js";
 import { config } from "../config.js";
 import { getIssueComments, getIssuePredictionData, searchIssueKeys } from "../commentEvaluator/jiraClient.js";
-import { extractFeatures, resolutionDaysFor } from "../featureExtraction.js";
+import { extractFeatures, resolutionDaysFor } from "../prediction/featureExtraction.js";
 import { insertResolutionRecord, getResolutionHistory } from "./resolutionHistory.js";
-import { predictResolutionDays } from "../knn.js";
-import { scoreConfidence } from "../confidence.js";
+import { predictResolutionDays } from "../prediction/knn.js";
+import { scoreConfidence } from "../prediction/confidence.js";
 import { thresholds } from "../config.js";
 
 interface InvokeBody {
@@ -96,7 +96,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
     });
 
     // Live view of the existing resolution-time k-NN predictor
-    // (src/knn.ts + issue_resolution_history), for a dashboard page rather
+    // (src/prediction/knn.ts + issue_resolution_history), for a dashboard page rather
     // than the ad hoc one-off analysis this was previously only available
     // as. Returns the full ranked real+synthetic candidate pool (not just
     // the top-k actually used), so the frontend can render every candidate
