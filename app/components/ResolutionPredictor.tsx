@@ -251,8 +251,23 @@ export function ResolutionPredictor() {
         </div>
       )}
 
+      {!data && loading && (
+        <div className="flex items-center gap-2 rounded-md bg-slate-100 p-4 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-500 dark:border-slate-700 dark:border-t-slate-400" />
+          Predicting…
+        </div>
+      )}
+
       {data && scales && (
-        <div className="flex flex-col gap-4">
+        <div className="relative flex flex-col gap-4">
+          {loading && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center rounded-lg bg-white/60 backdrop-blur-[1px] dark:bg-slate-950/60">
+              <span className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-500 dark:border-slate-700 dark:border-t-slate-400" />
+                Updating prediction…
+              </span>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-slate-200 bg-slate-200 sm:grid-cols-4 dark:border-slate-800 dark:bg-slate-800">
             <div className="flex flex-col gap-1 bg-white p-3 dark:bg-slate-900">
               <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
