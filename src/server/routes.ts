@@ -15,7 +15,7 @@ import { getOpenPullRequests, getRecentCommits } from "../tools/github.js";
 import { config } from "../config.js";
 import { getIssueComments, getIssuePredictionData, searchIssueKeys } from "../commentEvaluator/jiraClient.js";
 import { extractFeatures, resolutionDaysFor } from "../prediction/featureExtraction.js";
-import { insertResolutionRecord, getResolutionHistory } from "./resolutionHistory.js";
+import { insertResolutionRecord, getResolutionHistory, getLastResolutionUpdate } from "./resolutionHistory.js";
 import { predictResolutionDays } from "../prediction/knn.js";
 import { scoreConfidence } from "../prediction/confidence.js";
 import { thresholds } from "../config.js";
@@ -36,12 +36,67 @@ function validateInvokeBody(body: unknown): InvokeBody {
   return { threadId, prompt };
 }
 
+interface ThreadSummary {
+  threadId: string;
+  updatedAt: string | null;
+  preview: string;
+  messageCount: number;
+}
+
+async function buildThreadSummary(threadId: string): Promise<ThreadSummary> {
+  const checkpointer = await getCheckpointer();
+  const tuple = await checkpointer.getTuple({ configurable: { thread_id: threadId } });
+  if (!tuple) return { threadId, updatedAt: null, preview: "", messageCount: 0 };
+  const rawMessages = (tuple.checkpoint.channel_values.messages as unknown[]) ?? [];
+  const history = checkpointMessagesToHistory(rawMessages);
+  const firstUser = history.find((m) => m.role === "user");
+  const preview = (firstUser?.content ?? history[history.length - 1]?.content ?? "").slice(0, 80);
+  return {
+    threadId,
+    updatedAt: (tuple.checkpoint as { ts?: string }).ts ?? null,
+    preview,
+    messageCount: history.length,
+  };
+}
+
+export async function listThreads(
+  limit: number,
+  offset: number,
+): Promise<{ threads: ThreadSummary[]; hasMore: boolean }> {
+  const { rows } = await pool.query<{ thread_id: string }>(
+    `SELECT thread_id FROM checkpoints
+     WHERE checkpoint_ns = ''
+     GROUP BY thread_id
+     ORDER BY MAX(checkpoint_id) DESC
+     LIMIT $1 OFFSET $2`,
+    [limit + 1, offset],
+  );
+  const hasMore = rows.length > limit;
+  const page = rows.slice(0, limit);
+  const threads = await Promise.all(page.map((r) => buildThreadSummary(r.thread_id)));
+  return { threads, hasMore };
+}
+
 export async function registerRoutes(app: FastifyInstance): Promise<void> {
   app.get("/health", async () => ({ status: "ok" }));
 
   app.register(async (protectedRoutes) => {
     // addHook is fastify's way of adding middleware to a route group; this one checks the x-api-key header.
     protectedRoutes.addHook("onRequest", requireApiKey);
+
+    protectedRoutes.get("/threads", async (request, reply) => {
+      const query = request.query as { limit?: string; offset?: string };
+      const limit = Math.min(Math.max(Number(query.limit ?? 20) || 20, 1), 50);
+      const offset = Math.max(Number(query.offset ?? 0) || 0, 0);
+
+      try {
+        const { threads, hasMore } = await listThreads(limit, offset);
+        return reply.send({ threads, limit, offset, hasMore });
+      } catch (err) {
+        request.log.error({ app: request.apiClient?.appName, err }, "threads: list failed");
+        return reply.code(500).send({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
 
     protectedRoutes.get("/threads/:threadId/history", async (request, reply) => {
       const { threadId } = request.params as { threadId: string };
@@ -155,6 +210,13 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
         request.log.error({ app: request.apiClient?.appName, issueKey, err }, "predict: fetch failed");
         return reply.code(500).send({ error: err instanceof Error ? err.message : String(err) });
       }
+    });
+
+    // Lets the dashboard show when issue_resolution_history was last written to,
+    // without exposing the whole table.
+    protectedRoutes.get("/internal/collect-resolution-history/status", async (_request, reply) => {
+      const lastUpdatedAt = await getLastResolutionUpdate();
+      return reply.send({ lastUpdatedAt });
     });
 
     // Called on an interval by app/api/digest's resolution-collector scheduler

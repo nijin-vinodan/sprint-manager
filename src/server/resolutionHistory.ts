@@ -25,6 +25,10 @@ async function migrate(): Promise<void> {
     CREATE UNIQUE INDEX IF NOT EXISTS issue_resolution_history_issue_key_source_idx
       ON issue_resolution_history (issue_key, source);
   `);
+  await pool.query(`
+    ALTER TABLE issue_resolution_history
+      ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+  `);
 }
 
 export async function ensureResolutionHistoryTable(): Promise<void> {
@@ -97,7 +101,8 @@ export async function insertResolutionRecord(record: ResolutionRecord): Promise<
       comment_count = EXCLUDED.comment_count,
       reopen_count = EXCLUDED.reopen_count,
       resolution_days = EXCLUDED.resolution_days,
-      closed_at = EXCLUDED.closed_at;
+      closed_at = EXCLUDED.closed_at,
+      updated_at = now();
     `,
     [
       record.issueKey,
@@ -114,6 +119,15 @@ export async function insertResolutionRecord(record: ResolutionRecord): Promise<
       record.closedAt,
     ],
   );
+}
+
+/** Most recent write across all rows — used to surface "last collector run" in the dashboard. */
+export async function getLastResolutionUpdate(): Promise<string | null> {
+  await ensureResolutionHistoryTable();
+  const result = await pool.query<{ last_updated: string | null }>(
+    `SELECT MAX(updated_at) AS last_updated FROM issue_resolution_history;`,
+  );
+  return result.rows[0]?.last_updated ?? null;
 }
 
 /** Scoped to source='synthetic' only — never touches real history. */

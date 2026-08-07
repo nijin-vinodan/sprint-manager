@@ -10,7 +10,7 @@ const MAX_WIDTH = 640;
 const COLLAPSED_STRIP_WIDTH = 44;
 
 interface SidebarProps {
-  children: React.ReactNode;
+  children: (collapseButton: React.ReactNode) => React.ReactNode;
 }
 
 export function Sidebar({ children }: SidebarProps) {
@@ -73,7 +73,7 @@ export function Sidebar({ children }: SidebarProps) {
     return (
       <div
         style={{ width: COLLAPSED_STRIP_WIDTH }}
-        className="flex h-full flex-col items-center gap-2 bg-slate-50 py-3 shadow-[-8px_0_24px_-12px_rgba(15,23,42,0.15)] dark:border-l dark:border-slate-800/60 dark:bg-slate-900"
+        className="my-6 flex h-[calc(100%-3rem)] flex-col items-center gap-2 bg-slate-50 py-3 shadow-[-8px_0_24px_-12px_rgba(15,23,42,0.15)] dark:border-l dark:border-slate-800/60 dark:bg-slate-900"
       >
         <button
           onClick={toggleCollapsed}
@@ -88,27 +88,28 @@ export function Sidebar({ children }: SidebarProps) {
     );
   }
 
+  const collapseButton = (
+    <button
+      onClick={toggleCollapsed}
+      aria-label="Collapse chat panel"
+      className="rounded-md p-1.5 text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-800"
+    >
+      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 6l6 6-6 6" />
+      </svg>
+    </button>
+  );
+
   return (
-    <div className="relative flex h-full" style={{ width }}>
+    <div className="relative flex" style={{ width }}>
       <div
         onMouseDown={onDragStart}
         className="absolute -left-1 top-0 h-full w-2 cursor-col-resize"
         role="separator"
         aria-orientation="vertical"
       />
-      <div className="flex h-full min-h-0 w-full flex-col pl-4 shadow-[-8px_0_24px_-12px_rgba(15,23,42,0.15)] dark:border-l dark:border-slate-800/60 dark:pl-3">
-        <div className="mb-1 flex justify-end">
-          <button
-            onClick={toggleCollapsed}
-            aria-label="Collapse chat panel"
-            className="rounded-md p-1.5 text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-800"
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 6l6 6-6 6" />
-            </svg>
-          </button>
-        </div>
-        <div className="min-h-0 flex-1">{children}</div>
+      <div className="flex h-full min-h-0 w-full flex-col shadow-[-8px_0_24px_-12px_rgba(15,23,42,0.15)] dark:border-l dark:border-slate-800/60 dark:pl-3">
+        <div className="min-h-0 flex-1">{children(collapseButton)}</div>
       </div>
     </div>
   );

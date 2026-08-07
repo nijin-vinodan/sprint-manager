@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Header } from "./components/Header";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,7 +21,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className="flex h-screen flex-col bg-white text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100">
-        <Header />
         <div className="min-h-0 flex-1">{children}</div>
       </body>
     </html>

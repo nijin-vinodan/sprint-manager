@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Markdown } from "./Markdown";
+import { ChatHistoryDrawer } from "./ChatHistoryDrawer";
 
 const THREAD_ID_KEY = "sprintmanager.chat.threadId";
 
@@ -75,7 +76,11 @@ async function consumeSseStream(
   }
 }
 
-export function ChatPanel() {
+interface ChatPanelProps {
+  collapseButton?: React.ReactNode;
+}
+
+export function ChatPanel({ collapseButton }: ChatPanelProps) {
   // threadId persists in localStorage across refreshes, so the standalone
   // agent server's checkpointer can recall prior turns — the message history
   // below is then hydrated from Postgres via that same threadId, not cached
@@ -92,6 +97,7 @@ export function ChatPanel() {
   const [plan, setPlan] = useState<TodoItem[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -196,17 +202,21 @@ export function ChatPanel() {
     return () => controller.abort();
   }, [threadId, handleEvent]);
 
-  const startNewChat = useCallback(() => {
-    const fresh = crypto.randomUUID();
-    localStorage.setItem(THREAD_ID_KEY, fresh);
-    setThreadId(fresh);
+  const switchToThread = useCallback((id: string) => {
+    abortRef.current?.abort();
+    localStorage.setItem(THREAD_ID_KEY, id);
+    setThreadId(id);
     setMessages([]);
     setStreamingText("");
     setActiveSubagents([]);
     setToolActivity([]);
     setPlan([]);
     setError(null);
+    setIsStreaming(false);
+    setShowHistory(false);
   }, []);
+
+  const startNewChat = useCallback(() => switchToThread(crypto.randomUUID()), [switchToThread]);
 
   const send = useCallback(
     async (userText: string) => {
@@ -266,18 +276,37 @@ export function ChatPanel() {
   }, [threadId]);
 
   return (
-    <div className="flex h-full flex-col gap-3">
+    <div className="p-6 relative flex h-full flex-col gap-3 overflow-hidden">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Chat</h2>
-        <button
-          type="button"
-          onClick={startNewChat}
-          disabled={isStreaming}
-          className="rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-slate-200 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
-        >
-          New chat
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setShowHistory((v) => !v)}
+            className="rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-800"
+          >
+            History
+          </button>
+          <button
+            type="button"
+            onClick={startNewChat}
+            disabled={isStreaming}
+            className="rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-slate-200 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
+          >
+            New chat
+          </button>
+          {collapseButton}
+        </div>
       </div>
+
+      <ChatHistoryDrawer
+        open={showHistory}
+        currentThreadId={threadId}
+        onSelect={switchToThread}
+        onNewChat={startNewChat}
+        onClose={() => setShowHistory(false)}
+        disabled={isStreaming}
+      />
 
       {activeSubagents.map((s) => (
         <div
@@ -307,21 +336,21 @@ export function ChatPanel() {
         </ul>
       )}
 
-      <div className="flex-1 overflow-y-auto rounded-md bg-slate-100 p-3 dark:bg-slate-900">
+      <div className="flex-1 overflow-y-auto rounded-md">
         <div className="flex flex-col gap-3">
           {messages.map((m, i) =>
             m.role === "user" ? (
-              <div key={i} className="self-end rounded-md bg-indigo-600 px-3 py-2 text-sm text-white">
+              <div key={i} className="self-end rounded-md bg-indigo-600 px-6 py-6 text-sm text-white">
                 {m.content}
               </div>
             ) : (
-              <div key={i} className="rounded-md bg-slate-200 px-3 py-2 text-sm dark:bg-slate-800">
+              <div key={i} className="rounded-md bg-slate-200 px-6 py-6 text-sm dark:bg-slate-800">
                 <Markdown text={m.content} />
               </div>
             ),
           )}
           {isStreaming && streamingText && (
-            <div className="rounded-md bg-slate-200 px-3 py-2 text-sm dark:bg-slate-800">
+            <div className="rounded-md bg-slate-200 px-6 py-6 text-sm dark:bg-slate-800">
               <Markdown text={streamingText} />
             </div>
           )}

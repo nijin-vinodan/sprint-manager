@@ -43,6 +43,16 @@ const PLOT_WIDTH = VIEWPORT_WIDTH - MARGIN.left - MARGIN.right;
 const PLOT_HEIGHT = VIEWPORT_HEIGHT - MARGIN.top - MARGIN.bottom;
 const Y_TICKS = [0, 1, 2, 4, 8, 16, 32, 45];
 
+function formatRelativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const minutes = Math.floor(diffMs / 60_000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
 const CONFIDENCE_COLOR: Record<PredictionData["confidence"]["level"], string> = {
   high: "text-emerald-600 dark:text-emerald-400",
   medium: "text-amber-600 dark:text-amber-400",
@@ -86,9 +96,18 @@ export function ResolutionPredictor() {
   const [poolMode, setPoolMode] = useState<PoolMode>("all");
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const [pointer, setPointer] = useState({ x: 0, y: 0 });
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const isDark = useIsDarkMode();
   const colors = isDark ? DARK_COLORS : LIGHT_COLORS;
+
+  const fetchStatus = useCallback(() => {
+    fetch("/api/resolution-collector/status")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body: { lastUpdatedAt: string | null } | null) => setLastUpdatedAt(body?.lastUpdatedAt ?? null))
+      .catch(() => setLastUpdatedAt(null));
+  }, []);
 
   useEffect(() => {
     fetch("/api/sprint")
@@ -96,6 +115,10 @@ export function ResolutionPredictor() {
       .then(setSprintData)
       .catch(() => setSprintData(null));
   }, []);
+
+  useEffect(() => {
+    fetchStatus();
+  }, [fetchStatus]);
 
   const predict = useCallback(async (issueKey: string, k: number, pool: PoolMode) => {
     if (!issueKey.trim()) return;
@@ -126,6 +149,17 @@ export function ResolutionPredictor() {
     },
     [targetKey, predict],
   );
+
+  const refreshHistory = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await fetch("/api/resolution-collector/trigger", { method: "POST" });
+      fetchStatus();
+      if (targetKey) predict(targetKey, kValue, poolMode);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchStatus, targetKey, kValue, poolMode, predict]);
 
   const sprintTickets = sprintData?.tickets ?? [];
   const searchResults = useMemo(
@@ -162,11 +196,25 @@ export function ResolutionPredictor() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-          Resolution-time prediction · k-NN neighbor map
-        </p>
-        <h2 className="text-lg font-semibold">Predict a Ticket's Estimate</h2>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            Resolution-time prediction · k-NN neighbor map
+          </p>
+          <h2 className="text-lg font-semibold">Predict a Ticket's Estimate</h2>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+          <span>
+            History last updated: {lastUpdatedAt ? formatRelativeTime(lastUpdatedAt) : "never"}
+          </span>
+          <button
+            onClick={refreshHistory}
+            disabled={refreshing}
+            className="rounded-md border border-slate-300 px-2.5 py-1 font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            {refreshing ? "Refreshing…" : "Refresh now"}
+          </button>
+        </div>
       </div>
 
       <div className="relative flex flex-wrap items-center gap-2">
