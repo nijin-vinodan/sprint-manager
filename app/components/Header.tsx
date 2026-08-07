@@ -9,7 +9,11 @@ interface SprintMeta {
   daysRemaining: number | null;
 }
 
-export function Header() {
+interface HeaderProps {
+  children?: React.ReactNode;
+}
+
+export function Header({ children }: HeaderProps) {
   const [sprint, setSprint] = useState<SprintMeta | null>(null);
 
   const load = useCallback(async () => {
@@ -28,8 +32,8 @@ export function Header() {
   }, [load]);
 
   return (
-    <header className="flex w-full items-center justify-between bg-white px-6 py-3 shadow-[0_1px_3px_0_rgba(0,0,0,0.06)] dark:border-b dark:border-slate-800/60 dark:bg-slate-950">
-      <div className="flex items-center gap-4">
+    <header className="relative z-10 grid w-full grid-cols-[1fr_auto_1fr] items-center gap-6 bg-slate-100 px-6 py-3 shadow-[0_4px_6px_-2px_rgba(0,0,0,0.1)] dark:border-b dark:border-slate-800/60 dark:bg-slate-900">
+      <div className="flex items-center gap-4 justify-self-start">
         <h1 className="text-xl font-semibold">Sprint Manager</h1>
         {sprint && (
           <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
@@ -45,7 +49,10 @@ export function Header() {
           </div>
         )}
       </div>
-      <ThemeToggle />
+      <div className="justify-self-center">{children}</div>
+      <div className="justify-self-end">
+        <ThemeToggle />
+      </div>
     </header>
   );
 }

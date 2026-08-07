@@ -15,7 +15,7 @@ import { getOpenPullRequests, getRecentCommits } from "../tools/github.js";
 import { config } from "../config.js";
 import { getIssueComments, getIssuePredictionData, searchIssueKeys } from "../commentEvaluator/jiraClient.js";
 import { extractFeatures, resolutionDaysFor } from "../prediction/featureExtraction.js";
-import { insertResolutionRecord, getResolutionHistory } from "./resolutionHistory.js";
+import { insertResolutionRecord, getResolutionHistory, getLastResolutionUpdate } from "./resolutionHistory.js";
 import { predictResolutionDays } from "../prediction/knn.js";
 import { scoreConfidence } from "../prediction/confidence.js";
 import { thresholds } from "../config.js";
@@ -210,6 +210,13 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
         request.log.error({ app: request.apiClient?.appName, issueKey, err }, "predict: fetch failed");
         return reply.code(500).send({ error: err instanceof Error ? err.message : String(err) });
       }
+    });
+
+    // Lets the dashboard show when issue_resolution_history was last written to,
+    // without exposing the whole table.
+    protectedRoutes.get("/internal/collect-resolution-history/status", async (_request, reply) => {
+      const lastUpdatedAt = await getLastResolutionUpdate();
+      return reply.send({ lastUpdatedAt });
     });
 
     // Called on an interval by app/api/digest's resolution-collector scheduler

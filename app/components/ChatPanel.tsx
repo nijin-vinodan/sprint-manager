@@ -76,7 +76,11 @@ async function consumeSseStream(
   }
 }
 
-export function ChatPanel() {
+interface ChatPanelProps {
+  collapseButton?: React.ReactNode;
+}
+
+export function ChatPanel({ collapseButton }: ChatPanelProps) {
   // threadId persists in localStorage across refreshes, so the standalone
   // agent server's checkpointer can recall prior turns — the message history
   // below is then hydrated from Postgres via that same threadId, not cached
@@ -272,7 +276,7 @@ export function ChatPanel() {
   }, [threadId]);
 
   return (
-    <div className="relative flex h-full flex-col gap-3 overflow-hidden">
+    <div className="p-6 relative flex h-full flex-col gap-3 overflow-hidden">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Chat</h2>
         <div className="flex items-center gap-1">
@@ -291,6 +295,7 @@ export function ChatPanel() {
           >
             New chat
           </button>
+          {collapseButton}
         </div>
       </div>
 
@@ -331,21 +336,21 @@ export function ChatPanel() {
         </ul>
       )}
 
-      <div className="flex-1 overflow-y-auto rounded-md bg-slate-100 p-3 dark:bg-slate-900">
+      <div className="flex-1 overflow-y-auto rounded-md">
         <div className="flex flex-col gap-3">
           {messages.map((m, i) =>
             m.role === "user" ? (
-              <div key={i} className="self-end rounded-md bg-indigo-600 px-3 py-2 text-sm text-white">
+              <div key={i} className="self-end rounded-md bg-indigo-600 px-6 py-6 text-sm text-white">
                 {m.content}
               </div>
             ) : (
-              <div key={i} className="rounded-md bg-slate-200 px-3 py-2 text-sm dark:bg-slate-800">
+              <div key={i} className="rounded-md bg-slate-200 px-6 py-6 text-sm dark:bg-slate-800">
                 <Markdown text={m.content} />
               </div>
             ),
           )}
           {isStreaming && streamingText && (
-            <div className="rounded-md bg-slate-200 px-3 py-2 text-sm dark:bg-slate-800">
+            <div className="rounded-md bg-slate-200 px-6 py-6 text-sm dark:bg-slate-800">
               <Markdown text={streamingText} />
             </div>
           )}

@@ -6,8 +6,9 @@ import { SprintBoard } from "./components/SprintBoard";
 import { SprintHealthDigest } from "./components/SprintHealthDigest";
 import { ResolutionPredictor } from "./components/ResolutionPredictor";
 import { Sidebar } from "./components/Sidebar";
-import { Tabs, type TabDef } from "./components/Tabs";
+import { TabList, TabPanel, type TabDef } from "./components/Tabs";
 import { DigestAlertTracker } from "./components/DigestAlertTracker";
+import { Header } from "./components/Header";
 
 const LAST_VIEWED_KEY = "sprintmanager.digest.lastViewedAt";
 
@@ -30,14 +31,17 @@ export default function DashboardPage() {
   ];
 
   return (
-    <main className="flex h-full w-full gap-4 p-6">
-      <DigestAlertTracker onHasNewDigestChange={setHasNewDigest} />
-      <div className="min-h-0 flex-1">
-        <Tabs tabs={tabs} activeId={activeTab} onChange={handleTabChange} />
-      </div>
-      <Sidebar>
-        <ChatPanel />
-      </Sidebar>
-    </main>
+    <div className="flex h-full w-full flex-col">
+      <Header>
+        <TabList tabs={tabs} activeId={activeTab} onChange={handleTabChange} />
+      </Header>
+      <main className="flex min-h-0 flex-1 w-full gap-4">
+        <DigestAlertTracker onHasNewDigestChange={setHasNewDigest} />
+        <div className="min-h-0 flex-1 py-6 pl-6">
+          <TabPanel tabs={tabs} activeId={activeTab} />
+        </div>
+        <Sidebar>{(collapseButton) => <ChatPanel collapseButton={collapseButton} />}</Sidebar>
+      </main>
+    </div>
   );
 }
