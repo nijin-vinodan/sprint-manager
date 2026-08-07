@@ -90,6 +90,7 @@ npm install
 cp .env.example .env   # fill in Jira + GitHub credentials
 npm run dev            # runs with the default prompt
 npm run dev -- "What's blocking SMA-42?"
+npm test               # vitest unit tests (dateUtils, knn, commentEvaluator, server)
 ```
 
 Required environment variables (see `.env.example`):
@@ -108,16 +109,57 @@ Required environment variables (see `.env.example`):
 
 ```
 src/
-  config.ts         env vars + thresholds
-  dateUtils.ts      shared date/text helpers used by both tool files
-  tools/jira.ts     getActiveSprint, getSprintIssues, getIssueDetails
-  tools/github.ts   getOpenPullRequests, getRecentCommits
-  agents/           jiraAnalyst.ts / githubAnalyst.ts sub-agent definitions
-  prompts/          one system prompt per agent, plus shared.ts + digest.ts
-  agent.ts          createDeepAgent orchestrator wiring
-  index.ts          CLI entry point
-  server/           standalone Fastify agent server (see below)
+  config.ts             env vars + thresholds (incl. K_NEIGHBORS)
+  dateUtils.ts          shared date/text helpers used by both tool files
+  tools/jira.ts         getActiveSprint, getSprintIssues, getIssueDetails
+  tools/github.ts       getOpenPullRequests, getRecentCommits
+  tools/jiraComments.ts addJiraComment (write tool, jira-writer only)
+  agents/               jiraAnalyst.ts / githubAnalyst.ts / jiraWriter.ts sub-agent definitions
+  prompts/              one system prompt per agent, plus shared.ts + digest.ts
+  prediction/           k-NN resolution-time predictor (featureExtraction, knn, confidence, resolutionPrediction tool)
+  commentEvaluator/     rule-based Jira nudge-comment engine (implemented, not wired up — see below)
+  agent.ts              createDeepAgent orchestrator wiring
+  index.ts              CLI entry point
+  server/               standalone Fastify agent server (see below)
+scripts/
+  backfillResolutionHistory.ts          one-off backfill of resolved issues into issue_resolution_history
+  generateSyntheticResolutionHistory.ts npm run seed:synthetic-resolution
+  loadtest.ts                           npm run loadtest
+tests/                  vitest unit tests (npm test), covering dateUtils, knn, commentEvaluator, server
 ```
+
+## Resolution-time prediction
+
+A hand-rolled k-NN model (no external ML library) predicts how many workdays an issue will take to
+resolve, from historical resolved issues in a Postgres `issue_resolution_history` table. Exposed
+both as an agent tool (`predictResolutionTime`, `src/prediction/resolutionPrediction.ts`) and a
+dashboard page (`app/components/ResolutionPredictor.tsx`, tab "Predict").
+
+- **Features**: issue type, priority, story points (proxied from Jira's Original Estimate ÷ 8h
+  workday), labels, assignee, dependency count, comment count, reopen count.
+- **Real vs. synthetic history**: real rows come from actually-resolved SMA issues; synthetic rows
+  (`npm run seed:synthetic-resolution`) pad the candidate pool and validate the k-NN mechanics
+  against a known ground-truth formula. Real neighbors are preferred; the model only falls back to
+  synthetic candidates when nothing real is close enough, and flags when it did
+  (`usedFallbackToSynthetic`).
+- **Keeping history fresh**: `app/api/digest/_resolutionCollector.ts` polls the agent server's
+  `POST /internal/collect-resolution-history` on an interval to backfill newly-closed issues.
+  `scripts/backfillResolutionHistory.ts` does an initial one-off backfill (note: this script
+  currently has a broken import path — see `CLAUDE.md`).
+- See `docs/sequence-resolution-prediction.md` for the full flow.
+
+## Jira comment evaluator (implemented, not currently wired up)
+
+`src/commentEvaluator/` is a rule-based engine (staleness, unassigned, overdue, blocked-ticket
+rules, etc.) that would post automated nudge comments to Jira, with dedup so the same nudge isn't
+reposted while a ticket's status hasn't changed. It's fully unit-tested but has **no production
+caller** — nothing in the repo currently invokes it via a route, scheduler, or agent tool. It is a
+distinct write path from `jira-writer` below (fully automated vs. human-confirmed), and would need
+an explicit decision to wire up before it runs against real tickets.
+
+The one currently-active write path is the `jira-writer` sub-agent (`src/agents/jiraWriter.ts`),
+which posts a Jira comment via `addJiraComment` only after the user has explicitly confirmed the
+exact comment text in chat — the sole exception to this system otherwise being read-only.
 
 ## Standalone agent server (`src/server/`)
 
@@ -272,6 +314,17 @@ curl -N -X POST http://localhost:8787/invoke/stream \
 
 `GET /health` takes no auth and returns `{ "status": "ok" }` — a plain liveness check, not a
 readiness check (it doesn't touch Postgres or the model).
+
+Other authenticated routes beyond `/invoke` and `/invoke/stream`:
+
+| Route | Purpose |
+|---|---|
+| `GET /threads/:threadId/history` | Prior message history for a thread, from the Postgres checkpointer |
+| `GET /threads/:threadId/stream` | Resume an in-flight run's SSE stream after a disconnect/refresh; `204` if nothing to resume |
+| `POST /threads/:threadId/cancel` | Cancel an in-flight run on this replica |
+| `GET /sprint` | Direct Jira/GitHub data view, cross-referenced tickets↔PRs↔commits — bypasses the orchestrator entirely |
+| `GET /predict/:issueKey` | k-NN resolution-time prediction for one issue (query params: `k`, `pool`) — see "Resolution-time prediction" above |
+| `POST /internal/collect-resolution-history` | Backfills recently-closed issues into `issue_resolution_history`; called on an interval by the dashboard, not meant for external callers |
 
 `threadId` is any string the caller chooses to identify a conversation — reuse it to continue the
 same thread (the checkpointer keys conversation history by it); use a new one to start fresh.

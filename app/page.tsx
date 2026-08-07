@@ -30,7 +30,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <main className="mx-auto flex h-full w-[95%] gap-4 p-6">
+    <main className="flex h-full w-full gap-4 p-6">
       <DigestAlertTracker onHasNewDigestChange={setHasNewDigest} />
       <div className="min-h-0 flex-1">
         <Tabs tabs={tabs} activeId={activeTab} onChange={handleTabChange} />
