@@ -18,7 +18,7 @@ const MARKDOWN_COMPONENTS: Components = {
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="text-indigo-600 underline dark:text-indigo-300"
+      className="text-blue-600 underline dark:text-blue-300"
     >
       {children}
     </a>

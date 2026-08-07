@@ -98,6 +98,8 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isResuming, setIsResuming] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -107,6 +109,7 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
   useEffect(() => {
     if (!threadId) return; // still resolving from localStorage (see mount effect above)
     let cancelled = false;
+    setIsLoadingHistory(true);
     (async () => {
       try {
         const res = await fetch(`/api/chat/history?threadId=${encodeURIComponent(threadId)}`);
@@ -117,6 +120,8 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
         }
       } catch {
         // network error / bad JSON — degrade silently to empty chat
+      } finally {
+        if (!cancelled) setIsLoadingHistory(false);
       }
     })();
     return () => {
@@ -178,6 +183,7 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
     if (!threadId) return;
     const controller = new AbortController();
     (async () => {
+      setIsResuming(true);
       try {
         const res = await fetch(`/api/chat/stream?threadId=${encodeURIComponent(threadId)}`, {
           signal: controller.signal,
@@ -197,6 +203,8 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
         if ((err as Error).name !== "AbortError") {
           setError(err instanceof Error ? err.message : String(err));
         }
+      } finally {
+        setIsResuming(false);
       }
     })();
     return () => controller.abort();
@@ -283,14 +291,15 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
           <button
             type="button"
             onClick={() => setShowHistory((v) => !v)}
-            className="rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-800"
+            disabled={isLoadingHistory}
+            className="rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-slate-200 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
           >
             History
           </button>
           <button
             type="button"
             onClick={startNewChat}
-            disabled={isStreaming}
+            disabled={isStreaming || isLoadingHistory}
             className="rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-slate-200 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
           >
             New chat
@@ -311,7 +320,7 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
       {activeSubagents.map((s) => (
         <div
           key={s.name}
-          className="rounded-md bg-indigo-500/10 px-3 py-1 text-xs text-indigo-700 dark:text-indigo-300"
+          className="rounded-md bg-blue-500/10 px-3 py-1 text-xs text-blue-700 dark:text-blue-300"
         >
           Working: {s.name}…
         </div>
@@ -326,7 +335,7 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
                 todo.status === "completed"
                   ? "text-slate-500 line-through"
                   : todo.status === "in_progress"
-                    ? "text-indigo-700 dark:text-indigo-300"
+                    ? "text-blue-700 dark:text-blue-300"
                     : "text-slate-600 dark:text-slate-300"
               }
             >
@@ -337,10 +346,16 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
       )}
 
       <div className="flex-1 overflow-y-auto rounded-md">
+        {(isLoadingHistory || isResuming) && (
+          <div className="flex items-center gap-2 px-2 py-3 text-xs text-slate-500 dark:text-slate-400">
+            <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-400 border-t-transparent dark:border-slate-500" />
+            {isResuming ? "Reattaching to in-progress response…" : "Loading conversation…"}
+          </div>
+        )}
         <div className="flex flex-col gap-3">
           {messages.map((m, i) =>
             m.role === "user" ? (
-              <div key={i} className="self-end rounded-md bg-indigo-600 px-6 py-6 text-sm text-white">
+              <div key={i} className="self-end rounded-md bg-blue-600 px-6 py-6 text-sm text-white">
                 {m.content}
               </div>
             ) : (
@@ -382,7 +397,7 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask about the sprint…"
-          disabled={isStreaming}
+          disabled={isStreaming || isLoadingHistory}
           className="flex-1 rounded-md bg-slate-100 px-3 py-2 text-sm outline-none disabled:opacity-50 dark:bg-slate-900"
         />
         {isStreaming ? (
@@ -396,7 +411,7 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
         ) : (
           <button
             type="submit"
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm hover:bg-indigo-500"
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm hover:bg-blue-500"
           >
             Send
           </button>

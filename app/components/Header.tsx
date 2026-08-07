@@ -42,7 +42,7 @@ export function Header({ children }: HeaderProps) {
             </span>
             {sprint.goal && <span className="hidden max-w-xs truncate sm:inline">{sprint.goal}</span>}
             {sprint.daysRemaining !== null && (
-              <span className="rounded-md bg-indigo-500/10 px-2 py-1 text-indigo-700 dark:text-indigo-300">
+              <span className="rounded-md bg-blue-500/10 px-2 py-1 text-blue-700 dark:text-blue-300">
                 {sprint.daysRemaining}d left
               </span>
             )}

@@ -198,10 +198,12 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
 
         return reply.send({
           issueKey,
+          summary: data.summary,
           predictedDays: prediction.predictedDays,
           confidence,
           kRequested,
           poolMode,
+          targetFeatures: issueFeatures,
           usedFallbackToSynthetic: prediction.usedFallbackToSynthetic,
           usedNeighborKeys: prediction.neighbors.map((n) => n.issueKey),
           allRanked: prediction.rankedCandidates,
