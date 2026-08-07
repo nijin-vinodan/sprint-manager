@@ -120,6 +120,7 @@ export interface StatusChange {
 }
 
 export interface IssuePredictionData {
+  summary: string;
   issueType: string;
   priority: string;
   labels: string[];
@@ -184,6 +185,7 @@ function issueLinksFromPayload(links: JiraIssueLinkPayload[]): IssueLink[] {
 export async function getIssuePredictionData(issueKey: string): Promise<IssuePredictionData> {
   const issue = await jiraFetch<{
     fields: {
+      summary: string;
       issuetype: { name: string };
       priority: { name: string } | null;
       labels: string[];
@@ -196,7 +198,7 @@ export async function getIssuePredictionData(issueKey: string): Promise<IssuePre
     };
     changelog: { histories: JiraChangelogHistory[] };
   }>(
-    `/rest/api/3/issue/${issueKey}?fields=issuetype,priority,labels,assignee,timetracking,created,resolutiondate,status,issuelinks&expand=changelog`,
+    `/rest/api/3/issue/${issueKey}?fields=summary,issuetype,priority,labels,assignee,timetracking,created,resolutiondate,status,issuelinks&expand=changelog`,
   );
 
   const f = issue.fields;
@@ -214,6 +216,7 @@ export async function getIssuePredictionData(issueKey: string): Promise<IssuePre
     .sort((a, b) => a.changedAt.localeCompare(b.changedAt));
 
   return {
+    summary: f.summary,
     issueType: f.issuetype.name,
     priority: f.priority?.name ?? "None",
     labels: f.labels,

@@ -24,13 +24,13 @@ export function TabList({ tabs, activeId, onChange }: TabListProps) {
           onClick={() => onChange(t.id)}
           className={`relative cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition-colors duration-150 ${
             t.id === activeId
-              ? "bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-indigo-300"
+              ? "bg-white text-blue-600 shadow-sm dark:bg-slate-700 dark:text-blue-300"
               : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
           }`}
         >
           {t.label}
           {t.showAlertDot && (
-            <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-indigo-500 dark:bg-indigo-300" />
+            <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-blue-500 dark:bg-blue-300" />
           )}
         </button>
       ))}

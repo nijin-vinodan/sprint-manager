@@ -6,6 +6,14 @@ export interface Neighbor {
   resolutionDays: number;
   distance: number;
   source: "real" | "synthetic";
+  issueType: string;
+  priority: string;
+  storyPoints: number | null;
+  labels: string[];
+  assignee: string | null;
+  dependencyCount: number;
+  commentCount: number;
+  reopenCount: number;
 }
 
 export interface PredictionResult {
@@ -85,7 +93,20 @@ function buildDistanceFn(pool: ResolutionRecord[]): (target: IssueFeatures, cand
 }
 
 function toNeighbor(candidate: ResolutionRecord, distance: number): Neighbor {
-  return { issueKey: candidate.issueKey, resolutionDays: candidate.resolutionDays, distance, source: candidate.source };
+  return {
+    issueKey: candidate.issueKey,
+    resolutionDays: candidate.resolutionDays,
+    distance,
+    source: candidate.source,
+    issueType: candidate.issueType,
+    priority: candidate.priority,
+    storyPoints: candidate.storyPoints,
+    labels: candidate.labels,
+    assignee: candidate.assignee,
+    dependencyCount: candidate.dependencyCount,
+    commentCount: candidate.commentCount,
+    reopenCount: candidate.reopenCount,
+  };
 }
 
 function weightedAverage(neighbors: Neighbor[]): number {

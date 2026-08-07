@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const DRAWER_WIDTH = 208;
+const DRAWER_WIDTH = 400;
 
 interface ThreadSummary {
   threadId: string;
@@ -102,7 +102,7 @@ export function ChatHistoryDrawer({
                 type="button"
                 onClick={() => onSelect(t.threadId)}
                 className={`w-full rounded-md px-2 py-1.5 text-left text-xs hover:bg-slate-100 dark:hover:bg-slate-800 ${
-                  t.threadId === currentThreadId ? "bg-indigo-500/10" : ""
+                  t.threadId === currentThreadId ? "bg-blue-500/10" : ""
                 }`}
               >
                 <div className="truncate text-slate-700 dark:text-slate-200">{t.preview || "(empty chat)"}</div>
