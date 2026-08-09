@@ -20,7 +20,9 @@ export function TabList({ tabs, activeId, onChange }: TabListProps) {
         <button
           key={t.id}
           role="tab"
+          id={`tab-${t.id}`}
           aria-selected={t.id === activeId}
+          aria-controls={`tabpanel-${t.id}`}
           onClick={() => onChange(t.id)}
           className={`relative cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition-colors duration-150 ${
             t.id === activeId
@@ -30,7 +32,7 @@ export function TabList({ tabs, activeId, onChange }: TabListProps) {
         >
           {t.label}
           {t.showAlertDot && (
-            <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-blue-500 dark:bg-blue-300" />
+            <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-blue-500 dark:bg-blue-300" aria-hidden="true" />
           )}
         </button>
       ))}
@@ -45,5 +47,14 @@ interface TabPanelProps {
 
 export function TabPanel({ tabs, activeId }: TabPanelProps) {
   const active = tabs.find((t) => t.id === activeId) ?? tabs[0];
-  return <div className="min-h-0 h-full overflow-y-auto">{active?.content}</div>;
+  return (
+    <div
+      role="tabpanel"
+      id={`tabpanel-${active?.id}`}
+      aria-labelledby={`tab-${active?.id}`}
+      className="min-h-0 h-full overflow-y-auto"
+    >
+      {active?.content}
+    </div>
+  );
 }

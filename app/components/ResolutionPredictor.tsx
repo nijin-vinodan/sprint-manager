@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useIsDarkMode } from "../hooks/useIsDarkMode";
 import { fuzzySearch } from "../lib/fuzzyMatch";
 import { formatWorkdayDuration } from "../lib/formatDuration";
@@ -149,6 +149,17 @@ export function ResolutionPredictor() {
   const isDark = useIsDarkMode();
   const colors = isDark ? DARK_COLORS : LIGHT_COLORS;
 
+  // Guards against out-of-order responses: rapid k/pool changes (or repeated
+  // searches) can fire overlapping /api/predict requests, and without this a
+  // slower earlier request resolving after a faster later one would clobber
+  // the latest result with stale data.
+  const requestIdRef = useRef(0);
+
+  // Cached SVG bounding rect for tooltip positioning — re-read on each
+  // mouseenter rather than on every mousemove to avoid per-event layout thrash.
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const svgRectRef = useRef<DOMRect | null>(null);
+
   const fetchStatus = useCallback(() => {
     fetch("/api/resolution-collector/status")
       .then((res) => (res.ok ? res.json() : null))
@@ -157,10 +168,14 @@ export function ResolutionPredictor() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/sprint")
+    const controller = new AbortController();
+    fetch("/api/sprint", { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : null))
       .then(setSprintData)
-      .catch(() => setSprintData(null));
+      .catch((err) => {
+        if ((err as Error).name !== "AbortError") setSprintData(null);
+      });
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
@@ -169,20 +184,23 @@ export function ResolutionPredictor() {
 
   const predict = useCallback(async (issueKey: string, k: number, pool: PoolMode) => {
     if (!issueKey.trim()) return;
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams({ issueKey: issueKey.trim(), k: String(k), pool });
       const res = await fetch(`/api/predict?${params.toString()}`);
       const body = await res.json();
+      if (requestId !== requestIdRef.current) return; // superseded by a newer request
       if (!res.ok) throw new Error(body.error ?? `Failed to predict: ${res.status}`);
       setData(body);
       setTargetKey(issueKey.trim());
     } catch (err) {
+      if (requestId !== requestIdRef.current) return;
       setError(err instanceof Error ? err.message : String(err));
       setData(null);
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
   }, []);
 
@@ -280,6 +298,12 @@ export function ResolutionPredictor() {
       <div className="relative flex flex-wrap items-center gap-2">
         <div className="relative">
           <input
+            id="ticket-search"
+            role="combobox"
+            aria-label="Search for a ticket by key or summary"
+            aria-expanded={searchResults.length > 0}
+            aria-controls="ticket-search-listbox"
+            aria-autocomplete="list"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => {
@@ -289,10 +313,16 @@ export function ResolutionPredictor() {
             className="w-72 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900"
           />
           {searchResults.length > 0 && (
-            <ul className="absolute z-10 mt-1 w-80 max-h-60 overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
+            <ul
+              id="ticket-search-listbox"
+              role="listbox"
+              aria-label="Matching tickets"
+              className="absolute z-10 mt-1 w-80 max-h-60 overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900"
+            >
               {searchResults.map((t) => (
-                <li key={t.key}>
+                <li key={t.key} role="option" aria-selected={false}>
                   <button
+                    type="button"
                     onClick={() => {
                       setSearchQuery("");
                       predict(t.key, kValue, poolMode);
@@ -307,6 +337,7 @@ export function ResolutionPredictor() {
           )}
         </div>
         <button
+          type="button"
           onClick={() => predict(searchQuery, kValue, poolMode)}
           disabled={loading || searchQuery.trim().length === 0}
           className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
@@ -321,6 +352,7 @@ export function ResolutionPredictor() {
             min={1}
             max={15}
             value={kValue}
+            aria-label="Number of neighbors (k)"
             onChange={(e) => {
               const next = Math.min(15, Math.max(1, Number(e.target.value) || 1));
               setKValue(next);
@@ -443,7 +475,7 @@ export function ResolutionPredictor() {
             </div>
 
             <div className="relative">
-              <svg viewBox={`0 0 ${VIEWPORT_WIDTH} ${VIEWPORT_HEIGHT}`} width="100%" height={VIEWPORT_HEIGHT}>
+              <svg ref={svgRef} viewBox={`0 0 ${VIEWPORT_WIDTH} ${VIEWPORT_HEIGHT}`} width="100%" height={VIEWPORT_HEIGHT}>
                 {Y_TICKS.map((t) => {
                   const y = scales.yScale(t);
                   return (
@@ -552,10 +584,20 @@ export function ResolutionPredictor() {
                         stroke={used ? colors.labelText : "none"}
                         strokeWidth={used ? 2 : 0}
                         style={{ cursor: "pointer" }}
-                        onMouseEnter={() => setHoveredKey(c.issueKey)}
-                        onMouseLeave={() => setHoveredKey((k) => (k === c.issueKey ? null : k))}
+                        onMouseEnter={(e) => {
+                          // Cache the SVG bounding rect once on enter rather than
+                          // recalculating it (forcing layout) on every mousemove.
+                          svgRectRef.current = svgRef.current?.getBoundingClientRect() ?? null;
+                          setHoveredKey(c.issueKey);
+                          const rect = svgRectRef.current;
+                          if (rect) setPointer({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+                        }}
+                        onMouseLeave={() => {
+                          svgRectRef.current = null;
+                          setHoveredKey((k) => (k === c.issueKey ? null : k));
+                        }}
                         onMouseMove={(e) => {
-                          const rect = e.currentTarget.ownerSVGElement?.getBoundingClientRect();
+                          const rect = svgRectRef.current;
                           if (rect) setPointer({ x: e.clientX - rect.left, y: e.clientY - rect.top });
                         }}
                       />

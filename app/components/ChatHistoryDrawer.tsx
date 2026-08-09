@@ -42,21 +42,25 @@ export function ChatHistoryDrawer({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/chat/threads?limit=30");
+        const res = await fetch("/api/chat/threads?limit=30", { signal: controller.signal });
         if (!res.ok) throw new Error(`Failed to load past chats: ${res.status}`);
         const data = await res.json();
         if (!cancelled) setThreads(Array.isArray(data?.threads) ? data.threads : []);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+        if (!cancelled && (err as Error).name !== "AbortError") {
+          setError(err instanceof Error ? err.message : String(err));
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
     return () => {
       cancelled = true;
+      controller.abort();
     };
     // Re-fetch whenever a new chat is created/switched into, so a freshly
     // started thread shows up in the list once it has its first message.

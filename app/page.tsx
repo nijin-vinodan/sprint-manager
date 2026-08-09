@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ChatPanel } from "./components/ChatPanel";
 import { SprintBoard } from "./components/SprintBoard";
 import { SprintHealthDigest } from "./components/SprintHealthDigest";
@@ -24,11 +24,14 @@ export default function DashboardPage() {
     }
   }, []);
 
-  const tabs: TabDef[] = [
-    { id: "board", label: "Board", content: <SprintBoard /> },
-    { id: "digest", label: "Digest", content: <SprintHealthDigest />, showAlertDot: hasNewDigest },
-    { id: "predict", label: "Predict", content: <ResolutionPredictor /> },
-  ];
+  const tabs: TabDef[] = useMemo(
+    () => [
+      { id: "board", label: "Board", content: <SprintBoard /> },
+      { id: "digest", label: "Digest", content: <SprintHealthDigest />, showAlertDot: hasNewDigest },
+      { id: "predict", label: "Predict", content: <ResolutionPredictor /> },
+    ],
+    [hasNewDigest],
+  );
 
   return (
     <div className="flex h-full w-full flex-col">

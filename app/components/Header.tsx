@@ -16,19 +16,22 @@ interface HeaderProps {
 export function Header({ children }: HeaderProps) {
   const [sprint, setSprint] = useState<SprintMeta | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
     try {
-      const res = await fetch("/api/sprint");
+      const res = await fetch("/api/sprint", { signal });
       if (!res.ok) return;
       const data: { active: boolean; sprint?: SprintMeta } = await res.json();
       if (data.active && data.sprint) setSprint(data.sprint);
-    } catch {
+    } catch (err) {
       // non-critical header decoration: no chips shown on transient failure
+      if ((err as Error).name === "AbortError") return;
     }
   }, []);
 
   useEffect(() => {
-    load();
+    const controller = new AbortController();
+    load(controller.signal);
+    return () => controller.abort();
   }, [load]);
 
   return (

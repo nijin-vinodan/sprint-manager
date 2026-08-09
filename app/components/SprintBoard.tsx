@@ -45,22 +45,26 @@ export function SprintBoard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/sprint");
+      const res = await fetch("/api/sprint", { signal });
       if (!res.ok) throw new Error(`Failed to load sprint data: ${res.status}`);
       setData(await res.json());
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      if ((err as Error).name !== "AbortError") {
+        setError(err instanceof Error ? err.message : String(err));
+      }
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    load();
+    const controller = new AbortController();
+    load(controller.signal);
+    return () => controller.abort();
   }, [load]);
 
   return (
@@ -68,7 +72,8 @@ export function SprintBoard() {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Sprint Board</h2>
         <button
-          onClick={load}
+          type="button"
+          onClick={() => load()}
           disabled={loading}
           className="rounded-md bg-slate-200 px-3 py-1 text-sm hover:bg-slate-300 disabled:opacity-50 dark:bg-slate-800 dark:hover:bg-slate-700"
         >

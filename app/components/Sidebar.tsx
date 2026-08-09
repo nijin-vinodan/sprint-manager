@@ -104,9 +104,32 @@ export function Sidebar({ children }: SidebarProps) {
     <div className="relative flex" style={{ width }}>
       <div
         onMouseDown={onDragStart}
-        className="absolute -left-1 top-0 h-full w-2 cursor-col-resize"
+        onKeyDown={(e) => {
+          const step = 10;
+          if (e.key === "ArrowLeft") {
+            e.preventDefault();
+            setWidth((w) => {
+              const next = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, w + step));
+              localStorage.setItem(WIDTH_KEY, String(next));
+              return next;
+            });
+          } else if (e.key === "ArrowRight") {
+            e.preventDefault();
+            setWidth((w) => {
+              const next = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, w - step));
+              localStorage.setItem(WIDTH_KEY, String(next));
+              return next;
+            });
+          }
+        }}
+        tabIndex={0}
+        className="absolute -left-1 top-0 h-full w-2 cursor-col-resize focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         role="separator"
         aria-orientation="vertical"
+        aria-label="Resize chat panel"
+        aria-valuenow={width}
+        aria-valuemin={MIN_WIDTH}
+        aria-valuemax={MAX_WIDTH}
       />
       <div className="flex h-full min-h-0 w-full flex-col shadow-[-8px_0_24px_-12px_rgba(15,23,42,0.15)] dark:border-l dark:border-slate-800/60 dark:pl-3">
         <div className="min-h-0 flex-1">{children(collapseButton)}</div>

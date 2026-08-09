@@ -1,103 +1,28 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Markdown } from "./Markdown";
 import { ChatHistoryDrawer } from "./ChatHistoryDrawer";
-
-const THREAD_ID_KEY = "sprintmanager.chat.threadId";
-
-// Only called from a useEffect (client-only) — never during SSR, where
-// localStorage doesn't exist.
-function loadOrCreateThreadId(): string {
-  const stored = localStorage.getItem(THREAD_ID_KEY);
-  if (stored) return stored;
-  const fresh = crypto.randomUUID();
-  localStorage.setItem(THREAD_ID_KEY, fresh);
-  return fresh;
-}
-
-type Role = "user" | "assistant";
-interface ChatMessage {
-  role: Role;
-  content: string;
-}
-
-type TodoStatus = "pending" | "in_progress" | "completed";
-interface TodoItem {
-  content: string;
-  status: TodoStatus;
-}
-
-const TODO_STATUS_ICON: Record<TodoStatus, string> = {
-  pending: "☐",
-  in_progress: "◐",
-  completed: "☑",
-};
-
-type SseEvent =
-  | { type: "subagent_start"; path: string[]; name: string }
-  | { type: "subagent_end"; path: string[]; name: string; error?: string }
-  | { type: "tool_call"; path: string[]; callId: string; name: string; input: unknown }
-  | { type: "tool_result"; path: string[]; callId: string; name: string; output?: unknown; status: string; error?: string }
-  | { type: "token"; path: string[]; text: string }
-  | { type: "done"; threadId: string; response: string }
-  | { type: "error"; message: string };
-
-interface ActiveSubagent {
-  name: string;
-  path: string[];
-}
-
-function TypingDots() {
-  return (
-    <span className="inline-flex items-center gap-1 align-middle">
-      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.3s] dark:bg-slate-500" />
-      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.15s] dark:bg-slate-500" />
-      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 dark:bg-slate-500" />
-    </span>
-  );
-}
-
-// Shared by a fresh send() and the resume-after-refresh effect below — both
-// consume the exact same SSE frame format, so there's one parsing loop rather
-// than two copies that could drift.
-async function consumeSseStream(
-  body: ReadableStream<Uint8Array>,
-  onEvent: (event: SseEvent) => void,
-): Promise<void> {
-  const reader = body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-
-    const frames = buffer.split("\n\n");
-    buffer = frames.pop() ?? "";
-
-    for (const frame of frames) {
-      const dataLine = frame.split("\n").find((l) => l.startsWith("data: "));
-      if (!dataLine) continue;
-      const event: SseEvent = JSON.parse(dataLine.slice("data: ".length));
-      onEvent(event);
-    }
-  }
-}
+import { AgentStatusBanner } from "./chat/AgentStatusBanner";
+import { ChatHeader } from "./chat/ChatHeader";
+import { ChatInputForm } from "./chat/ChatInputForm";
+import { MessageList } from "./chat/MessageList";
+import { PlanList } from "./chat/PlanList";
+import { ToolActivityLog } from "./chat/ToolActivityLog";
+import { consumeSseStream } from "./chat/consumeSseStream";
+import {
+  THREAD_ID_KEY,
+  loadOrCreateThreadId,
+  type ActiveSubagent,
+  type ChatMessage,
+  type SseEvent,
+  type TodoItem,
+} from "./chat/types";
 
 interface ChatPanelProps {
   collapseButton?: React.ReactNode;
 }
 
 export function ChatPanel({ collapseButton }: ChatPanelProps) {
-  // threadId persists in localStorage across refreshes, so the standalone
-  // agent server's checkpointer can recall prior turns — the message history
-  // below is then hydrated from Postgres via that same threadId, not cached
-  // client-side, so it survives a refresh without a client-side cache of its own.
-  // Starts empty (not read from localStorage directly) since this component
-  // renders during SSR, where localStorage doesn't exist — resolved to a real
-  // value in the mount effect below, same pattern as ThemeToggle.tsx.
   const [threadId, setThreadId] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -112,14 +37,19 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
   const [isResuming, setIsResuming] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     setThreadId(loadOrCreateThreadId());
   }, []);
 
-  // Keeps the transcript pinned to the latest content as it streams in —
-  // messages/streamingText change on every token, so this fires continuously
-  // during a response rather than just once at the end.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  }, [input]);
+
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -127,19 +57,24 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
   }, [messages, streamingText]);
 
   useEffect(() => {
-    if (!threadId) return; // still resolving from localStorage (see mount effect above)
+    if (!threadId) return;
     let cancelled = false;
     setIsLoadingHistory(true);
     (async () => {
       try {
         const res = await fetch(`/api/chat/history?threadId=${encodeURIComponent(threadId)}`);
-        if (!res.ok) return; // degrade to empty chat — a history-load hiccup isn't a send failure
+        if (!res.ok) return;
         const data = await res.json();
         if (!cancelled && Array.isArray(data?.messages)) {
-          setMessages(data.messages);
+          setMessages(
+            (data.messages as Omit<ChatMessage, "id">[]).map((m, i) => ({
+              ...m,
+              id: `history-${i}`,
+            })),
+          );
         }
       } catch {
-        // network error / bad JSON — degrade silently to empty chat
+        // network error / bad JSON — degrade silently
       } finally {
         if (!cancelled) setIsLoadingHistory(false);
       }
@@ -165,8 +100,6 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
           const todos = (event.input as { todos?: TodoItem[] } | undefined)?.todos;
           if (Array.isArray(todos)) setPlan(todos);
           break;
-        } else {
-          console.log("No write_todos event, event.input:", event.input);
         }
         setToolActivity((prev) => [
           ...prev,
@@ -185,7 +118,10 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
         }
         break;
       case "done":
-        setMessages((prev) => [...prev, { role: "assistant", content: event.response }]);
+        setMessages((prev) => [
+          ...prev,
+          { id: crypto.randomUUID(), role: "assistant", content: event.response },
+        ]);
         setStreamingText("");
         break;
       case "error":
@@ -194,11 +130,6 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
     }
   }, []);
 
-  // Resumes a token-level replay of an in-flight run after a page refresh:
-  // the server keeps a disconnected run going and buffers every emitted
-  // event, so on remount we just try to reattach — a 204 (no active run)
-  // means there's nothing to resume, and the existing history effect above
-  // already covers any turn that had already completed.
   useEffect(() => {
     if (!threadId) return;
     const controller = new AbortController();
@@ -248,9 +179,9 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
 
   const send = useCallback(
     async (userText: string) => {
-      if (!userText.trim() || isStreaming || !threadId) return;
+      if (!userText.trim() || isStreaming || isResuming || !threadId) return;
 
-      setMessages((prev) => [...prev, { role: "user", content: userText }]);
+      setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "user", content: userText }]);
       setInput("");
       setStreamingText("");
       setActiveSubagents([]);
@@ -275,7 +206,6 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
         if (!res.ok || !res.body) {
           throw new Error(`Chat request failed: ${res.status}`);
         }
-
         await consumeSseStream(res.body, handleEvent);
       } catch (err) {
         if ((err as Error).name !== "AbortError") {
@@ -287,7 +217,7 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
         abortRef.current = null;
       }
     },
-    [threadId, isStreaming, handleEvent],
+    [threadId, isStreaming, isResuming, handleEvent],
   );
 
   const cancel = useCallback(() => {
@@ -297,36 +227,20 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ threadId }),
-      }).catch(() => {
-        // Best-effort — the local abort above already stops the UI regardless.
-      });
+      }).catch(() => {});
     }
   }, [threadId]);
 
   return (
     <div className="p-6 relative flex h-full flex-col gap-3 overflow-hidden">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Chat</h2>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setShowHistory((v) => !v)}
-            disabled={isLoadingHistory}
-            className="rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-slate-200 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
-          >
-            History
-          </button>
-          <button
-            type="button"
-            onClick={startNewChat}
-            disabled={isStreaming || isLoadingHistory}
-            className="rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-slate-200 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
-          >
-            New chat
-          </button>
-          {collapseButton}
-        </div>
-      </div>
+      <ChatHeader
+        collapseButton={collapseButton}
+        isLoadingHistory={isLoadingHistory}
+        isStreaming={isStreaming}
+        isResuming={isResuming}
+        onToggleHistory={() => setShowHistory((v) => !v)}
+        onNewChat={startNewChat}
+      />
 
       <ChatHistoryDrawer
         open={showHistory}
@@ -337,74 +251,20 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
         disabled={isStreaming}
       />
 
-      {activeSubagents.map((s) => (
-        <div
-          key={s.name}
-          className="rounded-md bg-blue-500/10 px-3 py-1 text-xs text-blue-700 dark:text-blue-300"
-        >
-          Working: {s.name}…
-        </div>
-      ))}
+      <AgentStatusBanner activeSubagents={activeSubagents} />
 
-      {plan.length > 0 && (
-        <ul className="rounded-md bg-slate-100 p-2 text-xs dark:bg-slate-900">
-          {plan.map((todo, i) => (
-            <li
-              key={i}
-              className={
-                todo.status === "completed"
-                  ? "text-slate-500 line-through"
-                  : todo.status === "in_progress"
-                    ? "text-blue-700 dark:text-blue-300"
-                    : "text-slate-600 dark:text-slate-300"
-              }
-            >
-              {TODO_STATUS_ICON[todo.status]} {todo.content}
-            </li>
-          ))}
-        </ul>
-      )}
+      <PlanList plan={plan} />
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto rounded-md">
-        {(isLoadingHistory || isResuming) && (
-          <div className="flex items-center gap-2 px-2 py-3 text-xs text-slate-500 dark:text-slate-400">
-            <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-400 border-t-transparent dark:border-slate-500" />
-            {isResuming ? "Reattaching to in-progress response…" : "Loading conversation…"}
-          </div>
-        )}
-        <div className="flex flex-col gap-3">
-          {messages.map((m, i) =>
-            m.role === "user" ? (
-              <div key={i} className="self-end rounded-md bg-blue-600 px-6 py-6 text-sm text-white">
-                {m.content}
-              </div>
-            ) : (
-              <div key={i} className="rounded-md bg-slate-200 px-6 py-6 text-sm dark:bg-slate-800">
-                <Markdown text={m.content} />
-              </div>
-            ),
-          )}
-          {isStreaming && streamingText && (
-            <div className="rounded-md bg-slate-200 px-6 py-6 text-sm dark:bg-slate-800">
-              <Markdown text={streamingText} />
-              <TypingDots />
-            </div>
-          )}
-          {isStreaming && !streamingText && (
-            <div className="rounded-md bg-slate-200 px-6 py-6 text-sm dark:bg-slate-800">
-              <TypingDots />
-            </div>
-          )}
-        </div>
-      </div>
+      <MessageList
+        messages={messages}
+        streamingText={streamingText}
+        isStreaming={isStreaming}
+        isLoadingHistory={isLoadingHistory}
+        isResuming={isResuming}
+        scrollRef={scrollRef}
+      />
 
-      {toolActivity.length > 0 && (
-        <ul className="max-h-24 overflow-y-auto rounded-md bg-slate-200 p-2 font-mono text-xs text-slate-500 dark:bg-slate-950">
-          {toolActivity.map((line, i) => (
-            <li key={i}>{line}</li>
-          ))}
-        </ul>
-      )}
+      <ToolActivityLog toolActivity={toolActivity} />
 
       {error && (
         <div className="rounded-md bg-red-500/10 p-2 text-sm text-red-700 dark:text-red-300">
@@ -412,50 +272,17 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
         </div>
       )}
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          send(input);
-        }}
-        className="flex items-end gap-2"
-      >
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              send(input);
-            }
-          }}
-          placeholder="Ask about the sprint…"
-          disabled={isStreaming || isLoadingHistory}
-          rows={1}
-          className="flex-1 resize-none rounded-md bg-slate-100 px-3 py-2 text-sm outline-none disabled:opacity-50 dark:bg-slate-900"
-          style={{ maxHeight: "10rem" }}
-          ref={(el) => {
-            if (!el) return;
-            el.style.height = "auto";
-            el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
-          }}
-        />
-        {isStreaming ? (
-          <button
-            type="button"
-            onClick={cancel}
-            className="rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-500"
-          >
-            Stop
-          </button>
-        ) : (
-          <button
-            type="submit"
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-500"
-          >
-            Send
-          </button>
-        )}
-      </form>
+      <ChatInputForm
+        input={input}
+        isStreaming={isStreaming}
+        isLoadingHistory={isLoadingHistory}
+        isResuming={isResuming}
+        textareaRef={textareaRef}
+        onInputChange={setInput}
+        onSend={send}
+        onCancel={cancel}
+      />
+
       <p className="text-center text-xs text-gray-400">
         Sprint Manager can make mistakes. Check important info.
       </p>
