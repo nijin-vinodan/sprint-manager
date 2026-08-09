@@ -391,32 +391,48 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
           e.preventDefault();
           send(input);
         }}
-        className="flex gap-2"
+        className="flex items-end gap-2"
       >
-        <input
+        <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              send(input);
+            }
+          }}
           placeholder="Ask about the sprint…"
           disabled={isStreaming || isLoadingHistory}
-          className="flex-1 rounded-md bg-slate-100 px-3 py-2 text-sm outline-none disabled:opacity-50 dark:bg-slate-900"
+          rows={1}
+          className="flex-1 resize-none rounded-md bg-slate-100 px-3 py-2 text-sm outline-none disabled:opacity-50 dark:bg-slate-900"
+          style={{ maxHeight: "10rem" }}
+          ref={(el) => {
+            if (!el) return;
+            el.style.height = "auto";
+            el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+          }}
         />
         {isStreaming ? (
           <button
             type="button"
             onClick={cancel}
-            className="rounded-md bg-red-600 px-4 py-2 text-sm hover:bg-red-500"
+            className="rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-500"
           >
             Stop
           </button>
         ) : (
           <button
             type="submit"
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm hover:bg-blue-500"
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-500"
           >
             Send
           </button>
         )}
       </form>
+      <p className="text-center text-xs text-gray-400">
+        Sprint Manager can make mistakes. Check important info.
+      </p>
     </div>
   );
 }
