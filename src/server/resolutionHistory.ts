@@ -119,6 +119,7 @@ export async function insertResolutionRecord(record: ResolutionRecord): Promise<
       record.closedAt,
     ],
   );
+  invalidateResolutionHistoryCache();
 }
 
 /** Most recent write across all rows — used to surface "last collector run" in the dashboard. */
@@ -134,6 +135,7 @@ export async function getLastResolutionUpdate(): Promise<string | null> {
 export async function deleteSyntheticResolutionHistory(): Promise<number> {
   await ensureResolutionHistoryTable();
   const result = await pool.query(`DELETE FROM issue_resolution_history WHERE source = 'synthetic';`);
+  invalidateResolutionHistoryCache();
   return result.rowCount ?? 0;
 }
 
@@ -148,4 +150,37 @@ export async function getResolutionHistory(): Promise<{ real: ResolutionRecord[]
     real: real.rows.map(toResolutionRecord),
     synthetic: synthetic.rows.map(toResolutionRecord),
   };
+}
+
+interface CachedPool {
+  data: { real: ResolutionRecord[]; synthetic: ResolutionRecord[] };
+  fetchedAt: number;
+  lastUpdateSeen: string | null;
+}
+
+let cache: CachedPool | undefined;
+const STALENESS_WINDOW_MS = 60_000;
+
+/** Invalidated on same-process writes (see insertResolutionRecord/deleteSyntheticResolutionHistory below).
+ *  Cross-process writes (other replicas, the CLI backfill script) are caught within
+ *  STALENESS_WINDOW_MS via the cheap getLastResolutionUpdate() probe below. */
+export async function getCachedResolutionHistory(): Promise<{ real: ResolutionRecord[]; synthetic: ResolutionRecord[] }> {
+  const now = Date.now();
+  if (cache && now - cache.fetchedAt < STALENESS_WINDOW_MS) {
+    return cache.data;
+  }
+
+  const lastUpdate = await getLastResolutionUpdate();
+  if (cache && cache.lastUpdateSeen === lastUpdate) {
+    cache.fetchedAt = now;
+    return cache.data;
+  }
+
+  const data = await getResolutionHistory();
+  cache = { data, fetchedAt: now, lastUpdateSeen: lastUpdate };
+  return data;
+}
+
+export function invalidateResolutionHistoryCache(): void {
+  cache = undefined;
 }

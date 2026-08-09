@@ -15,7 +15,7 @@ import { getOpenPullRequests, getRecentCommits } from "../tools/github.js";
 import { config } from "../config.js";
 import { getIssueComments, getIssuePredictionData, searchIssueKeys } from "../commentEvaluator/jiraClient.js";
 import { extractFeatures, resolutionDaysFor } from "../prediction/featureExtraction.js";
-import { insertResolutionRecord, getResolutionHistory, getLastResolutionUpdate } from "./resolutionHistory.js";
+import { insertResolutionRecord, getCachedResolutionHistory, getLastResolutionUpdate } from "./resolutionHistory.js";
 import { predictResolutionDays } from "../prediction/knn.js";
 import { scoreConfidence } from "../prediction/confidence.js";
 import { thresholds } from "../config.js";
@@ -178,7 +178,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
         const [data, comments] = await Promise.all([getIssuePredictionData(issueKey), getIssueComments(issueKey)]);
         const issueFeatures = extractFeatures({ issueKey, data, commentCount: comments.length });
 
-        const history = await getResolutionHistory();
+        const history = await getCachedResolutionHistory();
         // Leave-one-out: if this issue has already been backfilled into
         // issue_resolution_history (i.e. it's Done and part of the training
         // pool), it must not be allowed to appear as its own nearest

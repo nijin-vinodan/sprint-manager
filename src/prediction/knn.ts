@@ -48,8 +48,8 @@ function mean(values: number[]): number {
 // A null numeric feature is substituted with the candidate pool's mean
 // rather than 0, so a missing value doesn't look like a spuriously perfect
 // match against another missing value.
-function resolveNullableNumeric(value: number | null, poolValues: number[]): number {
-  return value ?? mean(poolValues);
+function resolveNullableNumeric(value: number | null, poolMean: number): number {
+  return value ?? poolMean;
 }
 
 function jaccardMismatch(a: string[], b: string[]): number {
@@ -71,10 +71,11 @@ function buildDistanceFn(pool: ResolutionRecord[]): (target: IssueFeatures, cand
   const dependencyRange = numericRange(dependencyPool);
   const commentRange = numericRange(commentPool);
   const reopenRange = numericRange(reopenPool);
+  const storyPointsMean = mean(storyPointsPool);
 
   return function distance(target: IssueFeatures, candidate: ResolutionRecord): number {
-    const targetStoryPoints = resolveNullableNumeric(target.storyPoints, storyPointsPool);
-    const candidateStoryPoints = resolveNullableNumeric(candidate.storyPoints, storyPointsPool);
+    const targetStoryPoints = resolveNullableNumeric(target.storyPoints, storyPointsMean);
+    const candidateStoryPoints = resolveNullableNumeric(candidate.storyPoints, storyPointsMean);
 
     const numeric =
       Math.abs(targetStoryPoints - candidateStoryPoints) / storyPointsRange +
