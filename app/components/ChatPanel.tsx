@@ -48,6 +48,16 @@ interface ActiveSubagent {
   path: string[];
 }
 
+function TypingDots() {
+  return (
+    <span className="inline-flex items-center gap-1 align-middle">
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.3s] dark:bg-slate-500" />
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.15s] dark:bg-slate-500" />
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 dark:bg-slate-500" />
+    </span>
+  );
+}
+
 // Shared by a fresh send() and the resume-after-refresh effect below — both
 // consume the exact same SSE frame format, so there's one parsing loop rather
 // than two copies that could drift.
@@ -101,10 +111,20 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isResuming, setIsResuming] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setThreadId(loadOrCreateThreadId());
   }, []);
+
+  // Keeps the transcript pinned to the latest content as it streams in —
+  // messages/streamingText change on every token, so this fires continuously
+  // during a response rather than just once at the end.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [messages, streamingText]);
 
   useEffect(() => {
     if (!threadId) return; // still resolving from localStorage (see mount effect above)
@@ -345,7 +365,7 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
         </ul>
       )}
 
-      <div className="flex-1 overflow-y-auto rounded-md">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto rounded-md">
         {(isLoadingHistory || isResuming) && (
           <div className="flex items-center gap-2 px-2 py-3 text-xs text-slate-500 dark:text-slate-400">
             <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-400 border-t-transparent dark:border-slate-500" />
@@ -367,6 +387,12 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
           {isStreaming && streamingText && (
             <div className="rounded-md bg-slate-200 px-6 py-6 text-sm dark:bg-slate-800">
               <Markdown text={streamingText} />
+              <TypingDots />
+            </div>
+          )}
+          {isStreaming && !streamingText && (
+            <div className="rounded-md bg-slate-200 px-6 py-6 text-sm dark:bg-slate-800">
+              <TypingDots />
             </div>
           )}
         </div>
