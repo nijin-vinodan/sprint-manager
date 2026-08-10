@@ -1,0 +1,308 @@
+{
+  "/SprintManagerNetworkStack": [
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:23:17)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    },
+    {
+      "type": "aws:cdk:stack-tags",
+      "data": [
+        {
+          "key": "Owner",
+          "value": "nvinodan@presidio.com"
+        },
+        {
+          "key": "Project",
+          "value": "SprintManager"
+        }
+      ]
+    }
+  ],
+  "/SprintManagerNetworkStack/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerNetworkStack/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerNetworkStack/Vpc/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "Vpc8378EB38"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Vpc2 in aws-cdk-lib...",
+        "new NetworkStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/network-stack.ts:17:16)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:23:17)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerNetworkStack/Vpc/IGW": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "VpcIGWD7BA715C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Vpc2 in aws-cdk-lib...",
+        "new NetworkStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/network-stack.ts:17:16)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:23:17)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerNetworkStack/Vpc/VPCGW": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "VpcVPCGWBF912B6E"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Vpc2 in aws-cdk-lib...",
+        "new NetworkStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/network-stack.ts:17:16)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:23:17)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerNetworkStack/Cluster/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClusterEB0386A7"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Cluster2 in aws-cdk-lib...",
+        "new NetworkStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/network-stack.ts:25:20)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:23:17)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerNetworkStack/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerNetworkStack/Exports/Output{\"Ref\":\"Vpc8378EB38\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputRefVpc8378EB38272D6E3A"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerNetworkStack/Exports/Output{\"Ref\":\"ClusterEB0386A7\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputRefClusterEB0386A796A0E3FE"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerNetworkStack/Exports/Output{\"Ref\":\"VpcpublicSubnet1Subnet2BB74ED7\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputRefVpcpublicSubnet1Subnet2BB74ED74EB42ADC"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerNetworkStack/Exports/Output{\"Ref\":\"VpcpublicSubnet2SubnetE34B022A\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputRefVpcpublicSubnet2SubnetE34B022AC8BB6627"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerNetworkStack/Vpc/publicSubnet1/Subnet": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "VpcpublicSubnet1Subnet2BB74ED7"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        ".../Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:268 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/SprintManagerNetworkStack/Vpc/publicSubnet1/RouteTable": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "VpcpublicSubnet1RouteTable15C15F8E"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        ".../Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:268 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/SprintManagerNetworkStack/Vpc/publicSubnet1/RouteTableAssociation": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "VpcpublicSubnet1RouteTableAssociation4E83B6E4"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        ".../Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:268 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/SprintManagerNetworkStack/Vpc/publicSubnet1/DefaultRoute": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "VpcpublicSubnet1DefaultRouteB88F9E93"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        ".../Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:208 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...new Vpc2 in aws-cdk-lib...",
+        "new NetworkStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/network-stack.ts:17:16)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:23:17)",
+        "...node internals, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerNetworkStack/Vpc/publicSubnet2/Subnet": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "VpcpublicSubnet2SubnetE34B022A"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        ".../Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:268 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/SprintManagerNetworkStack/Vpc/publicSubnet2/RouteTable": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "VpcpublicSubnet2RouteTableC5A6DF77"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        ".../Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:268 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/SprintManagerNetworkStack/Vpc/publicSubnet2/RouteTableAssociation": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "VpcpublicSubnet2RouteTableAssociationCCE257FF"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        ".../Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:268 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/SprintManagerNetworkStack/Vpc/publicSubnet2/DefaultRoute": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "VpcpublicSubnet2DefaultRoute732F0BEB"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        ".../Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/aws-ec2/lib/vpc.js:1:208 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...new Vpc2 in aws-cdk-lib...",
+        "new NetworkStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/network-stack.ts:17:16)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:23:17)",
+        "...node internals, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerNetworkStack/Cluster/DefaultServiceDiscoveryNamespace/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClusterDefaultServiceDiscoveryNamespaceC336F9B4"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ServicesStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/services-stack.ts:34:13)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:25:1)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    }
+  ]
+}

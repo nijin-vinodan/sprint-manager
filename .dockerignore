@@ -1,0 +1,16 @@
+node_modules
+dist
+.next
+.git
+docs
+tests
+scripts
+infra
+*.md
+.env
+.env.*
+!.env.example
+api-clients.json
+.vscode
+.idea
+coverage

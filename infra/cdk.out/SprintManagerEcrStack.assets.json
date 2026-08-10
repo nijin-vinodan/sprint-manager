@@ -1,0 +1,21 @@
+{
+  "version": "54.0.0",
+  "files": {
+    "18c137274d7367b6c4fe04f19f076c4ae5c565c8e812b628316335bf3286456a": {
+      "displayName": "SprintManagerEcrStack Template",
+      "source": {
+        "path": "SprintManagerEcrStack.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "current_account-us-east-1-3736ae3b": {
+          "bucketName": "cdk-hnb659fds-assets-${AWS::AccountId}-us-east-1",
+          "objectKey": "18c137274d7367b6c4fe04f19f076c4ae5c565c8e812b628316335bf3286456a.json",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-file-publishing-role-${AWS::AccountId}-us-east-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

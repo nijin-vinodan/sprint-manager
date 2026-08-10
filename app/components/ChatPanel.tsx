@@ -11,6 +11,7 @@ import { ToolActivityLog } from "./chat/ToolActivityLog";
 import { consumeSseStream } from "./chat/consumeSseStream";
 import {
   THREAD_ID_KEY,
+  generateId,
   loadOrCreateThreadId,
   type ActiveSubagent,
   type ChatMessage,
@@ -120,7 +121,7 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
       case "done":
         setMessages((prev) => [
           ...prev,
-          { id: crypto.randomUUID(), role: "assistant", content: event.response },
+          { id: generateId(), role: "assistant", content: event.response },
         ]);
         setStreamingText("");
         break;
@@ -175,13 +176,13 @@ export function ChatPanel({ collapseButton }: ChatPanelProps) {
     setShowHistory(false);
   }, []);
 
-  const startNewChat = useCallback(() => switchToThread(crypto.randomUUID()), [switchToThread]);
+  const startNewChat = useCallback(() => switchToThread(generateId()), [switchToThread]);
 
   const send = useCallback(
     async (userText: string) => {
       if (!userText.trim() || isStreaming || isResuming || !threadId) return;
 
-      setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "user", content: userText }]);
+      setMessages((prev) => [...prev, { id: generateId(), role: "user", content: userText }]);
       setInput("");
       setStreamingText("");
       setActiveSubagents([]);

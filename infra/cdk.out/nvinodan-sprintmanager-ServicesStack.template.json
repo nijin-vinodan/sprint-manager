@@ -1,0 +1,1131 @@
+{
+ "Resources": {
+  "AgentServerSg724E9772": {
+   "Type": "AWS::EC2::SecurityGroup",
+   "Properties": {
+    "GroupDescription": "Agent server Fargate tasks",
+    "SecurityGroupEgress": [
+     {
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Allow all outbound traffic by default",
+      "IpProtocol": "-1"
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "Owner",
+      "Value": "nvinodan@presidio.com"
+     },
+     {
+      "Key": "Project",
+      "Value": "nvinodan-sprintmanager"
+     }
+    ],
+    "VpcId": {
+     "Fn::ImportValue": "nvinodan-sprintmanager-NetworkStack:ExportsOutputRefVpc8378EB38272D6E3A"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "nvinodan-sprintmanager-ServicesStack/AgentServerSg/Resource"
+   }
+  },
+  "AgentServerSgfromnvinodansprintmanagerServicesStackDashboardSg0A07A0DD8787856F809F": {
+   "Type": "AWS::EC2::SecurityGroupIngress",
+   "Properties": {
+    "Description": "Dashboard to agent-server (Service Connect)",
+    "FromPort": 8787,
+    "GroupId": {
+     "Fn::GetAtt": [
+      "AgentServerSg724E9772",
+      "GroupId"
+     ]
+    },
+    "IpProtocol": "tcp",
+    "SourceSecurityGroupId": {
+     "Fn::GetAtt": [
+      "DashboardSgACD493D4",
+      "GroupId"
+     ]
+    },
+    "ToPort": 8787
+   },
+   "Metadata": {
+    "aws:cdk:path": "nvinodan-sprintmanager-ServicesStack/AgentServerSg/from nvinodansprintmanagerServicesStackDashboardSg0A07A0DD:8787"
+   }
+  },
+  "AgentServerLogsC3A75C1F": {
+   "Type": "AWS::Logs::LogGroup",
+   "Properties": {
+    "LogGroupName": "/nvinodan-sprintmanager/agent-server",
+    "RetentionInDays": 14,
+    "Tags": [
+     {
+      "Key": "Owner",
+      "Value": "nvinodan@presidio.com"
+     },
+     {
+      "Key": "Project",
+      "Value": "nvinodan-sprintmanager"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "nvinodan-sprintmanager-ServicesStack/AgentServerLogs/Resource"
+   }
+  },
+  "AgentServerTaskDefTaskRole81774B77": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Tags": [
+     {
+      "Key": "Owner",
+      "Value": "nvinodan@presidio.com"
+     },
+     {
+      "Key": "Project",
+      "Value": "nvinodan-sprintmanager"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "nvinodan-sprintmanager-ServicesStack/AgentServerTaskDef/TaskRole/Resource"
+   }
+  },
+  "AgentServerTaskDefB1D82D94": {
+   "Type": "AWS::ECS::TaskDefinition",
+   "Properties": {
+    "ContainerDefinitions": [
+     {
+      "Environment": [
+       {
+        "Name": "PORT",
+        "Value": "8787"
+       },
+       {
+        "Name": "HOST",
+        "Value": "0.0.0.0"
+       },
+       {
+        "Name": "JIRA_BASE_URL",
+        "Value": "https://nijindeveloper.atlassian.net"
+       },
+       {
+        "Name": "JIRA_EMAIL",
+        "Value": "nijindeveloper@gmail.com"
+       },
+       {
+        "Name": "JIRA_PROJECT_KEY",
+        "Value": "SM"
+       },
+       {
+        "Name": "GITHUB_OWNER",
+        "Value": "nijin-vinodan"
+       },
+       {
+        "Name": "GITHUB_REPO",
+        "Value": "sprint-manager"
+       },
+       {
+        "Name": "ANTHROPIC_MODEL",
+        "Value": "claude-haiku-4-5-20251001"
+       },
+       {
+        "Name": "ANTHROPIC_BASE_URL",
+        "Value": "https://proxy.llm-gateway.ready.presidio.com"
+       },
+       {
+        "Name": "DIGEST_INTERVAL_MINUTES",
+        "Value": "20"
+       },
+       {
+        "Name": "K_NEIGHBORS",
+        "Value": "3"
+       },
+       {
+        "Name": "LOCK_STALE_SECONDS",
+        "Value": "600"
+       },
+       {
+        "Name": "STREAM_CHUNK_TTL_HOURS",
+        "Value": "12"
+       }
+      ],
+      "Essential": true,
+      "Image": {
+       "Fn::Join": [
+        "",
+        [
+         {
+          "Fn::Select": [
+           4,
+           {
+            "Fn::Split": [
+             ":",
+             {
+              "Fn::ImportValue": "nvinodan-sprintmanager-EcrStack:ExportsOutputFnGetAttAgentServerRepoA9BE1C32Arn91D0087C"
+             }
+            ]
+           }
+          ]
+         },
+         ".dkr.ecr.",
+         {
+          "Fn::Select": [
+           3,
+           {
+            "Fn::Split": [
+             ":",
+             {
+              "Fn::ImportValue": "nvinodan-sprintmanager-EcrStack:ExportsOutputFnGetAttAgentServerRepoA9BE1C32Arn91D0087C"
+             }
+            ]
+           }
+          ]
+         },
+         ".",
+         {
+          "Ref": "AWS::URLSuffix"
+         },
+         "/",
+         {
+          "Fn::ImportValue": "nvinodan-sprintmanager-EcrStack:ExportsOutputRefAgentServerRepoA9BE1C3206076D0C"
+         },
+         ":latest"
+        ]
+       ]
+      },
+      "LogConfiguration": {
+       "LogDriver": "awslogs",
+       "Options": {
+        "awslogs-group": {
+         "Ref": "AgentServerLogsC3A75C1F"
+        },
+        "awslogs-stream-prefix": "agent-server",
+        "awslogs-region": "us-east-1"
+       }
+      },
+      "Name": "agent-server",
+      "PortMappings": [
+       {
+        "ContainerPort": 8787,
+        "Name": "agent-server",
+        "Protocol": "tcp"
+       }
+      ],
+      "Secrets": [
+       {
+        "Name": "DATABASE_URL",
+        "ValueFrom": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:",
+           {
+            "Ref": "AWS::Partition"
+           },
+           ":secretsmanager:us-east-1:877969058937:secret:nvinodan-sprintmanager/app-secrets:DATABASE_URL::"
+          ]
+         ]
+        }
+       },
+       {
+        "Name": "JIRA_API_TOKEN",
+        "ValueFrom": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:",
+           {
+            "Ref": "AWS::Partition"
+           },
+           ":secretsmanager:us-east-1:877969058937:secret:nvinodan-sprintmanager/app-secrets:JIRA_API_TOKEN::"
+          ]
+         ]
+        }
+       },
+       {
+        "Name": "GITHUB_TOKEN",
+        "ValueFrom": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:",
+           {
+            "Ref": "AWS::Partition"
+           },
+           ":secretsmanager:us-east-1:877969058937:secret:nvinodan-sprintmanager/app-secrets:GITHUB_TOKEN::"
+          ]
+         ]
+        }
+       },
+       {
+        "Name": "ANTHROPIC_AUTH_TOKEN",
+        "ValueFrom": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:",
+           {
+            "Ref": "AWS::Partition"
+           },
+           ":secretsmanager:us-east-1:877969058937:secret:nvinodan-sprintmanager/app-secrets:ANTHROPIC_AUTH_TOKEN::"
+          ]
+         ]
+        }
+       },
+       {
+        "Name": "API_CLIENTS_JSON",
+        "ValueFrom": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:",
+           {
+            "Ref": "AWS::Partition"
+           },
+           ":secretsmanager:us-east-1:877969058937:secret:nvinodan-sprintmanager/app-secrets:API_CLIENTS_JSON::"
+          ]
+         ]
+        }
+       }
+      ]
+     }
+    ],
+    "Cpu": "512",
+    "ExecutionRoleArn": {
+     "Fn::GetAtt": [
+      "AgentServerTaskDefExecutionRoleDE40FA0E",
+      "Arn"
+     ]
+    },
+    "Family": "nvinodansprintmanagerServicesStackAgentServerTaskDef533428E6",
+    "Memory": "1024",
+    "NetworkMode": "awsvpc",
+    "RequiresCompatibilities": [
+     "FARGATE"
+    ],
+    "Tags": [
+     {
+      "Key": "Owner",
+      "Value": "nvinodan@presidio.com"
+     },
+     {
+      "Key": "Project",
+      "Value": "nvinodan-sprintmanager"
+     }
+    ],
+    "TaskRoleArn": {
+     "Fn::GetAtt": [
+      "AgentServerTaskDefTaskRole81774B77",
+      "Arn"
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "nvinodan-sprintmanager-ServicesStack/AgentServerTaskDef/Resource"
+   }
+  },
+  "AgentServerTaskDefExecutionRoleDE40FA0E": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Tags": [
+     {
+      "Key": "Owner",
+      "Value": "nvinodan@presidio.com"
+     },
+     {
+      "Key": "Project",
+      "Value": "nvinodan-sprintmanager"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "nvinodan-sprintmanager-ServicesStack/AgentServerTaskDef/ExecutionRole/Resource"
+   }
+  },
+  "AgentServerTaskDefExecutionRoleDefaultPolicy101B42BE": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchGetImage"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::ImportValue": "nvinodan-sprintmanager-EcrStack:ExportsOutputFnGetAttAgentServerRepoA9BE1C32Arn91D0087C"
+       }
+      },
+      {
+       "Action": "ecr:GetAuthorizationToken",
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "AgentServerLogsC3A75C1F",
+         "Arn"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:",
+          {
+           "Ref": "AWS::Partition"
+          },
+          ":secretsmanager:us-east-1:877969058937:secret:nvinodan-sprintmanager/app-secrets-??????"
+         ]
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "AgentServerTaskDefExecutionRoleDefaultPolicy101B42BE",
+    "Roles": [
+     {
+      "Ref": "AgentServerTaskDefExecutionRoleDE40FA0E"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "nvinodan-sprintmanager-ServicesStack/AgentServerTaskDef/ExecutionRole/DefaultPolicy/Resource"
+   }
+  },
+  "AgentServerServiceC26D459C": {
+   "Type": "AWS::ECS::Service",
+   "Properties": {
+    "Cluster": {
+     "Fn::ImportValue": "nvinodan-sprintmanager-NetworkStack:ExportsOutputRefClusterEB0386A796A0E3FE"
+    },
+    "DeploymentConfiguration": {
+     "DeploymentCircuitBreaker": {
+      "Enable": true,
+      "Rollback": true
+     },
+     "MaximumPercent": 200,
+     "MinimumHealthyPercent": 100
+    },
+    "DeploymentController": {
+     "Type": "ECS"
+    },
+    "DesiredCount": 1,
+    "EnableECSManagedTags": false,
+    "LaunchType": "FARGATE",
+    "NetworkConfiguration": {
+     "AwsvpcConfiguration": {
+      "AssignPublicIp": "ENABLED",
+      "SecurityGroups": [
+       {
+        "Fn::GetAtt": [
+         "AgentServerSg724E9772",
+         "GroupId"
+        ]
+       }
+      ],
+      "Subnets": [
+       {
+        "Fn::ImportValue": "nvinodan-sprintmanager-NetworkStack:ExportsOutputRefVpcpublicSubnet1Subnet2BB74ED74EB42ADC"
+       },
+       {
+        "Fn::ImportValue": "nvinodan-sprintmanager-NetworkStack:ExportsOutputRefVpcpublicSubnet2SubnetE34B022AC8BB6627"
+       }
+      ]
+     }
+    },
+    "ServiceConnectConfiguration": {
+     "Enabled": true,
+     "Namespace": "nvinodan-sprintmanager.local",
+     "Services": [
+      {
+       "ClientAliases": [
+        {
+         "DnsName": "agent-server",
+         "Port": 8787
+        }
+       ],
+       "PortName": "agent-server"
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "Owner",
+      "Value": "nvinodan@presidio.com"
+     },
+     {
+      "Key": "Project",
+      "Value": "nvinodan-sprintmanager"
+     }
+    ],
+    "TaskDefinition": {
+     "Ref": "AgentServerTaskDefB1D82D94"
+    }
+   },
+   "DependsOn": [
+    "AgentServerTaskDefTaskRole81774B77"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "nvinodan-sprintmanager-ServicesStack/AgentServerService/Service"
+   }
+  },
+  "DashboardSgACD493D4": {
+   "Type": "AWS::EC2::SecurityGroup",
+   "Properties": {
+    "GroupDescription": "Dashboard Fargate tasks",
+    "SecurityGroupEgress": [
+     {
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Allow all outbound traffic by default",
+      "IpProtocol": "-1"
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "Owner",
+      "Value": "nvinodan@presidio.com"
+     },
+     {
+      "Key": "Project",
+      "Value": "nvinodan-sprintmanager"
+     }
+    ],
+    "VpcId": {
+     "Fn::ImportValue": "nvinodan-sprintmanager-NetworkStack:ExportsOutputRefVpc8378EB38272D6E3A"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "nvinodan-sprintmanager-ServicesStack/DashboardSg/Resource"
+   }
+  },
+  "DashboardSgfromnvinodansprintmanagerServicesStackAlbSg3AFBA3A330007CFA3224": {
+   "Type": "AWS::EC2::SecurityGroupIngress",
+   "Properties": {
+    "Description": "ALB to dashboard",
+    "FromPort": 3000,
+    "GroupId": {
+     "Fn::GetAtt": [
+      "DashboardSgACD493D4",
+      "GroupId"
+     ]
+    },
+    "IpProtocol": "tcp",
+    "SourceSecurityGroupId": {
+     "Fn::GetAtt": [
+      "AlbSg1155C1BE",
+      "GroupId"
+     ]
+    },
+    "ToPort": 3000
+   },
+   "Metadata": {
+    "aws:cdk:path": "nvinodan-sprintmanager-ServicesStack/DashboardSg/from nvinodansprintmanagerServicesStackAlbSg3AFBA3A3:3000"
+   }
+  },
+  "DashboardLogs349004DD": {
+   "Type": "AWS::Logs::LogGroup",
+   "Properties": {
+    "LogGroupName": "/nvinodan-sprintmanager/dashboard",
+    "RetentionInDays": 14,
+    "Tags": [
+     {
+      "Key": "Owner",
+      "Value": "nvinodan@presidio.com"
+     },
+     {
+      "Key": "Project",
+      "Value": "nvinodan-sprintmanager"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "nvinodan-sprintmanager-ServicesStack/DashboardLogs/Resource"
+   }
+  },
+  "DashboardTaskDefTaskRole9B8E3167": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Tags": [
+     {
+      "Key": "Owner",
+      "Value": "nvinodan@presidio.com"
+     },
+     {
+      "Key": "Project",
+      "Value": "nvinodan-sprintmanager"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "nvinodan-sprintmanager-ServicesStack/DashboardTaskDef/TaskRole/Resource"
+   }
+  },
+  "DashboardTaskDef833291EC": {
+   "Type": "AWS::ECS::TaskDefinition",
+   "Properties": {
+    "ContainerDefinitions": [
+     {
+      "Environment": [
+       {
+        "Name": "PORT",
+        "Value": "3000"
+       },
+       {
+        "Name": "AGENT_SERVER_URL",
+        "Value": "http://agent-server:8787"
+       },
+       {
+        "Name": "DIGEST_INTERVAL_MINUTES",
+        "Value": "20"
+       },
+       {
+        "Name": "RESOLUTION_COLLECTOR_INTERVAL_MINUTES",
+        "Value": "20"
+       }
+      ],
+      "Essential": true,
+      "Image": {
+       "Fn::Join": [
+        "",
+        [
+         {
+          "Fn::Select": [
+           4,
+           {
+            "Fn::Split": [
+             ":",
+             {
+              "Fn::ImportValue": "nvinodan-sprintmanager-EcrStack:ExportsOutputFnGetAttDashboardRepo8A026B6FArnC1423797"
+             }
+            ]
+           }
+          ]
+         },
+         ".dkr.ecr.",
+         {
+          "Fn::Select": [
+           3,
+           {
+            "Fn::Split": [
+             ":",
+             {
+              "Fn::ImportValue": "nvinodan-sprintmanager-EcrStack:ExportsOutputFnGetAttDashboardRepo8A026B6FArnC1423797"
+             }
+            ]
+           }
+          ]
+         },
+         ".",
+         {
+          "Ref": "AWS::URLSuffix"
+         },
+         "/",
+         {
+          "Fn::ImportValue": "nvinodan-sprintmanager-EcrStack:ExportsOutputRefDashboardRepo8A026B6F86BC0D7A"
+         },
+         ":latest"
+        ]
+       ]
+      },
+      "LogConfiguration": {
+       "LogDriver": "awslogs",
+       "Options": {
+        "awslogs-group": {
+         "Ref": "DashboardLogs349004DD"
+        },
+        "awslogs-stream-prefix": "dashboard",
+        "awslogs-region": "us-east-1"
+       }
+      },
+      "Name": "dashboard",
+      "PortMappings": [
+       {
+        "ContainerPort": 3000,
+        "Protocol": "tcp"
+       }
+      ],
+      "Secrets": [
+       {
+        "Name": "AGENT_SERVER_API_KEY",
+        "ValueFrom": {
+         "Fn::Join": [
+          "",
+          [
+           "arn:",
+           {
+            "Ref": "AWS::Partition"
+           },
+           ":secretsmanager:us-east-1:877969058937:secret:nvinodan-sprintmanager/app-secrets:AGENT_SERVER_API_KEY::"
+          ]
+         ]
+        }
+       }
+      ]
+     }
+    ],
+    "Cpu": "512",
+    "ExecutionRoleArn": {
+     "Fn::GetAtt": [
+      "DashboardTaskDefExecutionRoleE1CCFD0F",
+      "Arn"
+     ]
+    },
+    "Family": "nvinodansprintmanagerServicesStackDashboardTaskDefF505942E",
+    "Memory": "1024",
+    "NetworkMode": "awsvpc",
+    "RequiresCompatibilities": [
+     "FARGATE"
+    ],
+    "Tags": [
+     {
+      "Key": "Owner",
+      "Value": "nvinodan@presidio.com"
+     },
+     {
+      "Key": "Project",
+      "Value": "nvinodan-sprintmanager"
+     }
+    ],
+    "TaskRoleArn": {
+     "Fn::GetAtt": [
+      "DashboardTaskDefTaskRole9B8E3167",
+      "Arn"
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "nvinodan-sprintmanager-ServicesStack/DashboardTaskDef/Resource"
+   }
+  },
+  "DashboardTaskDefExecutionRoleE1CCFD0F": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Tags": [
+     {
+      "Key": "Owner",
+      "Value": "nvinodan@presidio.com"
+     },
+     {
+      "Key": "Project",
+      "Value": "nvinodan-sprintmanager"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "nvinodan-sprintmanager-ServicesStack/DashboardTaskDef/ExecutionRole/Resource"
+   }
+  },
+  "DashboardTaskDefExecutionRoleDefaultPolicyB51C1079": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchGetImage"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::ImportValue": "nvinodan-sprintmanager-EcrStack:ExportsOutputFnGetAttDashboardRepo8A026B6FArnC1423797"
+       }
+      },
+      {
+       "Action": "ecr:GetAuthorizationToken",
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "DashboardLogs349004DD",
+         "Arn"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:",
+          {
+           "Ref": "AWS::Partition"
+          },
+          ":secretsmanager:us-east-1:877969058937:secret:nvinodan-sprintmanager/app-secrets-??????"
+         ]
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "DashboardTaskDefExecutionRoleDefaultPolicyB51C1079",
+    "Roles": [
+     {
+      "Ref": "DashboardTaskDefExecutionRoleE1CCFD0F"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "nvinodan-sprintmanager-ServicesStack/DashboardTaskDef/ExecutionRole/DefaultPolicy/Resource"
+   }
+  },
+  "DashboardService73233129": {
+   "Type": "AWS::ECS::Service",
+   "Properties": {
+    "Cluster": {
+     "Fn::ImportValue": "nvinodan-sprintmanager-NetworkStack:ExportsOutputRefClusterEB0386A796A0E3FE"
+    },
+    "DeploymentConfiguration": {
+     "DeploymentCircuitBreaker": {
+      "Enable": true,
+      "Rollback": true
+     },
+     "MaximumPercent": 200,
+     "MinimumHealthyPercent": 50
+    },
+    "DeploymentController": {
+     "Type": "ECS"
+    },
+    "DesiredCount": 2,
+    "EnableECSManagedTags": false,
+    "HealthCheckGracePeriodSeconds": 60,
+    "LaunchType": "FARGATE",
+    "LoadBalancers": [
+     {
+      "ContainerName": "dashboard",
+      "ContainerPort": 3000,
+      "TargetGroupArn": {
+       "Ref": "AlbHttpListenerDashboardTargetGroupA8C74C30"
+      }
+     }
+    ],
+    "NetworkConfiguration": {
+     "AwsvpcConfiguration": {
+      "AssignPublicIp": "ENABLED",
+      "SecurityGroups": [
+       {
+        "Fn::GetAtt": [
+         "DashboardSgACD493D4",
+         "GroupId"
+        ]
+       }
+      ],
+      "Subnets": [
+       {
+        "Fn::ImportValue": "nvinodan-sprintmanager-NetworkStack:ExportsOutputRefVpcpublicSubnet1Subnet2BB74ED74EB42ADC"
+       },
+       {
+        "Fn::ImportValue": "nvinodan-sprintmanager-NetworkStack:ExportsOutputRefVpcpublicSubnet2SubnetE34B022AC8BB6627"
+       }
+      ]
+     }
+    },
+    "ServiceConnectConfiguration": {
+     "Enabled": true,
+     "Namespace": "nvinodan-sprintmanager.local"
+    },
+    "Tags": [
+     {
+      "Key": "Owner",
+      "Value": "nvinodan@presidio.com"
+     },
+     {
+      "Key": "Project",
+      "Value": "nvinodan-sprintmanager"
+     }
+    ],
+    "TaskDefinition": {
+     "Ref": "DashboardTaskDef833291EC"
+    }
+   },
+   "DependsOn": [
+    "AlbHttpListenerDashboardTargetGroupA8C74C30",
+    "AlbHttpListener00C8B33E",
+    "DashboardTaskDefTaskRole9B8E3167"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "nvinodan-sprintmanager-ServicesStack/DashboardService/Service"
+   }
+  },
+  "AlbSg1155C1BE": {
+   "Type": "AWS::EC2::SecurityGroup",
+   "Properties": {
+    "GroupDescription": "Public ALB",
+    "SecurityGroupEgress": [
+     {
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Allow all outbound traffic by default",
+      "IpProtocol": "-1"
+     }
+    ],
+    "SecurityGroupIngress": [
+     {
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Public HTTP",
+      "FromPort": 80,
+      "IpProtocol": "tcp",
+      "ToPort": 80
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "Owner",
+      "Value": "nvinodan@presidio.com"
+     },
+     {
+      "Key": "Project",
+      "Value": "nvinodan-sprintmanager"
+     }
+    ],
+    "VpcId": {
+     "Fn::ImportValue": "nvinodan-sprintmanager-NetworkStack:ExportsOutputRefVpc8378EB38272D6E3A"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "nvinodan-sprintmanager-ServicesStack/AlbSg/Resource"
+   }
+  },
+  "Alb16C2F182": {
+   "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+   "Properties": {
+    "LoadBalancerAttributes": [
+     {
+      "Key": "deletion_protection.enabled",
+      "Value": "false"
+     }
+    ],
+    "Scheme": "internet-facing",
+    "SecurityGroups": [
+     {
+      "Fn::GetAtt": [
+       "AlbSg1155C1BE",
+       "GroupId"
+      ]
+     }
+    ],
+    "Subnets": [
+     {
+      "Fn::ImportValue": "nvinodan-sprintmanager-NetworkStack:ExportsOutputRefVpcpublicSubnet1Subnet2BB74ED74EB42ADC"
+     },
+     {
+      "Fn::ImportValue": "nvinodan-sprintmanager-NetworkStack:ExportsOutputRefVpcpublicSubnet2SubnetE34B022AC8BB6627"
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "Owner",
+      "Value": "nvinodan@presidio.com"
+     },
+     {
+      "Key": "Project",
+      "Value": "nvinodan-sprintmanager"
+     }
+    ],
+    "Type": "application"
+   },
+   "Metadata": {
+    "aws:cdk:path": "nvinodan-sprintmanager-ServicesStack/Alb/Resource"
+   }
+  },
+  "AlbHttpListener00C8B33E": {
+   "Type": "AWS::ElasticLoadBalancingV2::Listener",
+   "Properties": {
+    "DefaultActions": [
+     {
+      "TargetGroupArn": {
+       "Ref": "AlbHttpListenerDashboardTargetGroupA8C74C30"
+      },
+      "Type": "forward"
+     }
+    ],
+    "LoadBalancerArn": {
+     "Ref": "Alb16C2F182"
+    },
+    "Port": 80,
+    "Protocol": "HTTP"
+   },
+   "Metadata": {
+    "aws:cdk:path": "nvinodan-sprintmanager-ServicesStack/Alb/HttpListener/Resource"
+   }
+  },
+  "AlbHttpListenerDashboardTargetGroupA8C74C30": {
+   "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+   "Properties": {
+    "HealthCheckPath": "/",
+    "Port": 3000,
+    "Protocol": "HTTP",
+    "Tags": [
+     {
+      "Key": "Owner",
+      "Value": "nvinodan@presidio.com"
+     },
+     {
+      "Key": "Project",
+      "Value": "nvinodan-sprintmanager"
+     }
+    ],
+    "TargetGroupAttributes": [
+     {
+      "Key": "deregistration_delay.timeout_seconds",
+      "Value": "30"
+     },
+     {
+      "Key": "stickiness.enabled",
+      "Value": "false"
+     }
+    ],
+    "TargetType": "ip",
+    "VpcId": {
+     "Fn::ImportValue": "nvinodan-sprintmanager-NetworkStack:ExportsOutputRefVpc8378EB38272D6E3A"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "nvinodan-sprintmanager-ServicesStack/Alb/HttpListener/DashboardTargetGroup/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/32RT2vDMAzFP8vujre5sPv+sDIorCS9D9VRjRrXDpadUoy/+0jSlrDDTnrvpycsLCXVy0o+PcCZK912laW9zE0E3Yka2aegUcCZfzJqJXODOgWKl3XwqRfvB/c/+HImIHMR1huWeePNPXfTRaBmmT8hGIi4A+4+8ECOInk35v4S7yKQw7Bg19kGw0Aa5yUmWQTBSeba24lOdest6ctoZ1UEWuBI2npo92DBaXJmUDK/9r0lDeMTGw/t29TDMC+/8MsccUR3zdz0or+DYDDe/2BhSxnBd4p9ikU436I88uOglHwer3NkoiokF+mEsp7rL5iy6je6AQAA"
+   },
+   "Metadata": {
+    "aws:cdk:path": "nvinodan-sprintmanager-ServicesStack/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "AgentServerServiceName": {
+   "Value": {
+    "Fn::GetAtt": [
+     "AgentServerServiceC26D459C",
+     "Name"
+    ]
+   }
+  },
+  "AlbDnsName": {
+   "Value": {
+    "Fn::GetAtt": [
+     "Alb16C2F182",
+     "DNSName"
+    ]
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

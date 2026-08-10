@@ -1,0 +1,137 @@
+{
+ "Resources": {
+  "AgentServerRepoA9BE1C32": {
+   "Type": "AWS::ECR::Repository",
+   "Properties": {
+    "EmptyOnDelete": true,
+    "ImageScanningConfiguration": {
+     "ScanOnPush": true
+    },
+    "RepositoryName": "nvinodan-sprintmanager/agent-server",
+    "Tags": [
+     {
+      "Key": "Owner",
+      "Value": "nvinodan@presidio.com"
+     },
+     {
+      "Key": "Project",
+      "Value": "nvinodan-sprintmanager"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "nvinodan-sprintmanager-EcrStack/AgentServerRepo/Resource"
+   }
+  },
+  "DashboardRepo8A026B6F": {
+   "Type": "AWS::ECR::Repository",
+   "Properties": {
+    "EmptyOnDelete": true,
+    "ImageScanningConfiguration": {
+     "ScanOnPush": true
+    },
+    "RepositoryName": "nvinodan-sprintmanager/dashboard",
+    "Tags": [
+     {
+      "Key": "Owner",
+      "Value": "nvinodan@presidio.com"
+     },
+     {
+      "Key": "Project",
+      "Value": "nvinodan-sprintmanager"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "nvinodan-sprintmanager-EcrStack/DashboardRepo/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/zPSMzIz1jNQTCwv1k1OydbNyUzSqw4uSUzO1kksL45PTS7Sqw5KLcgvzizJL6rUcU7LQ/Bqa3Xy8lNS9bKK9cuMjPQMQeZkFWdm6haV5pVk5qbqBUFoAA0ZU8lkAAAA"
+   },
+   "Metadata": {
+    "aws:cdk:path": "nvinodan-sprintmanager-EcrStack/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "ExportsOutputFnGetAttAgentServerRepoA9BE1C32Arn91D0087C": {
+   "Value": {
+    "Fn::GetAtt": [
+     "AgentServerRepoA9BE1C32",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "nvinodan-sprintmanager-EcrStack:ExportsOutputFnGetAttAgentServerRepoA9BE1C32Arn91D0087C"
+   }
+  },
+  "ExportsOutputRefAgentServerRepoA9BE1C3206076D0C": {
+   "Value": {
+    "Ref": "AgentServerRepoA9BE1C32"
+   },
+   "Export": {
+    "Name": "nvinodan-sprintmanager-EcrStack:ExportsOutputRefAgentServerRepoA9BE1C3206076D0C"
+   }
+  },
+  "ExportsOutputFnGetAttDashboardRepo8A026B6FArnC1423797": {
+   "Value": {
+    "Fn::GetAtt": [
+     "DashboardRepo8A026B6F",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "nvinodan-sprintmanager-EcrStack:ExportsOutputFnGetAttDashboardRepo8A026B6FArnC1423797"
+   }
+  },
+  "ExportsOutputRefDashboardRepo8A026B6F86BC0D7A": {
+   "Value": {
+    "Ref": "DashboardRepo8A026B6F"
+   },
+   "Export": {
+    "Name": "nvinodan-sprintmanager-EcrStack:ExportsOutputRefDashboardRepo8A026B6F86BC0D7A"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

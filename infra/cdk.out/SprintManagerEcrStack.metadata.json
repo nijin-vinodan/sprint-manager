@@ -1,0 +1,145 @@
+{
+  "/SprintManagerEcrStack": [
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:24:13)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    },
+    {
+      "type": "aws:cdk:stack-tags",
+      "data": [
+        {
+          "key": "Owner",
+          "value": "nvinodan@presidio.com"
+        },
+        {
+          "key": "Project",
+          "value": "SprintManager"
+        }
+      ]
+    }
+  ],
+  "/SprintManagerEcrStack/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerEcrStack/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerEcrStack/AgentServerRepo/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AgentServerRepoA9BE1C32"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Repository2 in aws-cdk-lib...",
+        "new EcrStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/ecr-stack.ts:18:28)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:24:13)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerEcrStack/DashboardRepo/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DashboardRepo8A026B6F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Repository2 in aws-cdk-lib...",
+        "new EcrStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/ecr-stack.ts:24:26)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:24:13)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerEcrStack/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerEcrStack/Exports/Output{\"Fn::GetAtt\":[\"AgentServerRepoA9BE1C32\",\"Arn\"]}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputFnGetAttAgentServerRepoA9BE1C32Arn91D0087C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerEcrStack/Exports/Output{\"Ref\":\"AgentServerRepoA9BE1C32\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputRefAgentServerRepoA9BE1C3206076D0C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerEcrStack/Exports/Output{\"Fn::GetAtt\":[\"DashboardRepo8A026B6F\",\"Arn\"]}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputFnGetAttDashboardRepo8A026B6FArnC1423797"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerEcrStack/Exports/Output{\"Ref\":\"DashboardRepo8A026B6F\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputRefDashboardRepo8A026B6F86BC0D7A"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ]
+}

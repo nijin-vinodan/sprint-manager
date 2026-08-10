@@ -1,0 +1,21 @@
+{
+  "version": "54.0.0",
+  "files": {
+    "9649ed2b03adfdf3555ae5734779414dea8cd0bf19af09d9f573089cc894eb1b": {
+      "displayName": "nvinodan-sprintmanager-NetworkStack Template",
+      "source": {
+        "path": "nvinodan-sprintmanager-NetworkStack.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "877969058937-us-east-1-b27793ba": {
+          "bucketName": "cdk-hnb659fds-assets-877969058937-us-east-1",
+          "objectKey": "9649ed2b03adfdf3555ae5734779414dea8cd0bf19af09d9f573089cc894eb1b.json",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::877969058937:role/cdk-hnb659fds-file-publishing-role-877969058937-us-east-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

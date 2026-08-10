@@ -1,0 +1,454 @@
+{
+  "/SprintManagerServicesStack": [
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:25:1)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    },
+    {
+      "type": "aws:cdk:warning",
+      "data": "No cross-stack-reference strength configured, defaulting to \"strong\". We recommend you set feature flag \"@aws-cdk/core:defaultCrossStackReferences\" to \"both\", then deploy everywhere, then set it to \"weak\". Alternatively, set it to \"strong\" explicitly to lock in the current producer-protecting behavior. (See: https://github.com/aws/aws-cdk/blob/main/packages/aws-cdk-lib/README.md#reference-strength) [ack: @aws-cdk/core:crossStackReferencesDefaultStrong]",
+      "trace": [
+        "Annotations.addMessage (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/core/lib/annotations.js:1:3506)",
+        "Annotations.addWarningV2 (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/core/lib/annotations.js:1:2194)",
+        "resolveValue (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/core/lib/private/refs.js:1:6980)",
+        "resolveReferences (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/core/lib/private/refs.js:1:4848)",
+        "prepareApp (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/core/lib/private/prepare-app.js:1:1503)",
+        "synthesize (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/core/lib/private/synthesis.js:1:2625)",
+        "App.synth (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/core/lib/stage.js:1:5061)",
+        "App.synth (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/core/lib/app.js:1:5050)",
+        "process.<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/core/lib/app.js:1:3936)",
+        "Object.onceWrapper (node:events:639:26)",
+        "process.emit (node:events:524:28)",
+        "process.emit (node:domain:489:12)",
+        "process.emit.sharedData.processEmitHook.installedValue [as emit] (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/@cspotcode/source-map-support/source-map-support.js:745:40)"
+      ]
+    },
+    {
+      "type": "aws:cdk:stack-tags",
+      "data": [
+        {
+          "key": "Owner",
+          "value": "nvinodan@presidio.com"
+        },
+        {
+          "key": "Project",
+          "value": "SprintManager"
+        }
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/DashboardService": [
+    {
+      "type": "aws:cdk:warning",
+      "data": "minHealthyPercent has not been configured so the default value of 50% is used. The number of running tasks will decrease below the desired count during deployments etc. See https://github.com/aws/aws-cdk/issues/31705 [ack: @aws-cdk/aws-ecs:minHealthyPercent]",
+      "trace": [
+        "Annotations.addMessage (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/core/lib/annotations.js:1:3506)",
+        "Annotations.addWarningV2 (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/core/lib/annotations.js:1:2194)",
+        "new BaseService2 (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/aws-ecs/lib/base/base-service.js:1:16295)",
+        "new BaseService2 (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/core/lib/no-box-stack-traces.js:1:345)",
+        "new FargateService2 (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/aws-ecs/lib/fargate/fargate-service.js:1:7829)",
+        "new FargateService2 (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/core/lib/prop-injectable.js:1:855)",
+        "new ServicesStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/services-stack.ts:196:30)",
+        "Object.<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:25:1)",
+        "Module._compile (node:internal/modules/cjs/loader:1562:14)",
+        "Module.m._compile (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/ts-node/src/index.ts:1618:23)",
+        "node:internal/modules/cjs/loader:1699:10",
+        "Object.require.extensions.<computed> [as .ts] (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/ts-node/src/index.ts:1621:12)",
+        "Module.load (node:internal/modules/cjs/loader:1313:32)",
+        "Function._load (node:internal/modules/cjs/loader:1123:12)",
+        "TracingChannel.traceSync (node:diagnostics_channel:322:14)",
+        "wrapModuleLoad (node:internal/modules/cjs/loader:217:24)",
+        "Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:170:5)",
+        "phase4 (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/ts-node/src/bin.ts:649:14)",
+        "bootstrap (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/ts-node/src/bin.ts:95:10)",
+        "main (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/ts-node/src/bin.ts:55:10)",
+        "Object.<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/ts-node/src/bin.ts:800:3)",
+        "Module._compile (node:internal/modules/cjs/loader:1562:14)",
+        "Object.<anonymous> (node:internal/modules/cjs/loader:1699:10)",
+        "Module.load (node:internal/modules/cjs/loader:1313:32)",
+        "Function._load (node:internal/modules/cjs/loader:1123:12)",
+        "TracingChannel.traceSync (node:diagnostics_channel:322:14)",
+        "wrapModuleLoad (node:internal/modules/cjs/loader:217:24)",
+        "Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:170:5)",
+        "node:internal/main/run_main_module:36:49"
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/AgentServerServiceName": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AgentServerServiceName"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new ServicesStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/services-stack.ts:238:5)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:25:1)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/AlbDnsName": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AlbDnsName"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new ServicesStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/services-stack.ts:241:5)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:25:1)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/AppSecrets/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AppSecretsA1997F2A"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Secret2 in aws-cdk-lib...",
+        "new ServicesStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/services-stack.ts:45:24)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:25:1)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/AgentServerSg/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AgentServerSg724E9772"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new SecurityGroup2 in aws-cdk-lib...",
+        "new ServicesStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/services-stack.ts:57:27)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:25:1)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/AgentServerSg/from SprintManagerServicesStackDashboardSg179305FA:8787": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AgentServerSgfromSprintManagerServicesStackDashboardSg179305FA878752F46CAA"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ServicesStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/services-stack.ts:157:19)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:25:1)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/AgentServerLogs/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AgentServerLogsC3A75C1F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new LogGroup2 in aws-cdk-lib...",
+        "new ServicesStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/services-stack.ts:63:33)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:25:1)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/AgentServerTaskDef/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AgentServerTaskDefB1D82D94"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new FargateTaskDefinition2 in aws-cdk-lib...",
+        "new ServicesStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/services-stack.ts:69:32)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:25:1)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/AgentServerService/Service": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AgentServerServiceC26D459C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new FargateService2 in aws-cdk-lib...",
+        "new ServicesStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/services-stack.ts:122:32)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:25:1)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/DashboardSg/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DashboardSgACD493D4"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new SecurityGroup2 in aws-cdk-lib...",
+        "new ServicesStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/services-stack.ts:152:25)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:25:1)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/DashboardSg/from SprintManagerServicesStackAlbSgB5AC2122:3000": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DashboardSgfromSprintManagerServicesStackAlbSgB5AC21223000BB0CF8F8"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ServicesStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/services-stack.ts:213:17)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:25:1)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/DashboardLogs/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DashboardLogs349004DD"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new LogGroup2 in aws-cdk-lib...",
+        "new ServicesStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/services-stack.ts:163:31)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:25:1)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/DashboardTaskDef/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DashboardTaskDef833291EC"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new FargateTaskDefinition2 in aws-cdk-lib...",
+        "new ServicesStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/services-stack.ts:169:30)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:25:1)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/DashboardService/Service": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DashboardService73233129"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new FargateService2 in aws-cdk-lib...",
+        "new ServicesStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/services-stack.ts:196:30)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:25:1)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/AlbSg/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AlbSg1155C1BE"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new SecurityGroup2 in aws-cdk-lib...",
+        "new ServicesStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/services-stack.ts:207:19)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:25:1)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/Alb/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "Alb16C2F182"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new ApplicationLoadBalancer2 in aws-cdk-lib...",
+        "new ServicesStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/services-stack.ts:219:17)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:25:1)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/AgentServerTaskDef/TaskRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AgentServerTaskDefTaskRole81774B77"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new FargateTaskDefinition2 in aws-cdk-lib...",
+        "new ServicesStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/services-stack.ts:69:32)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:25:1)",
+        "...node internals, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/AgentServerTaskDef/ExecutionRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AgentServerTaskDefExecutionRoleDE40FA0E"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/DashboardTaskDef/TaskRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DashboardTaskDefTaskRole9B8E3167"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new FargateTaskDefinition2 in aws-cdk-lib...",
+        "new ServicesStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/services-stack.ts:169:30)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:25:1)",
+        "...node internals, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/DashboardTaskDef/ExecutionRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DashboardTaskDefExecutionRoleE1CCFD0F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/Alb/HttpListener/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AlbHttpListener00C8B33E"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ServicesStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/services-stack.ts:226:26)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:25:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/AgentServerTaskDef/ExecutionRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AgentServerTaskDefExecutionRoleDefaultPolicy101B42BE"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/DashboardTaskDef/ExecutionRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DashboardTaskDefExecutionRoleDefaultPolicyB51C1079"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerServicesStack/Alb/HttpListener/DashboardTargetGroup/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AlbHttpListenerDashboardTargetGroupA8C74C30"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ServicesStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/services-stack.ts:230:14)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:25:1)",
+        "...node internals, ts-node..."
+      ]
+    }
+  ]
+}

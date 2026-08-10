@@ -1,9 +1,22 @@
 export const THREAD_ID_KEY = "sprintmanager.chat.threadId";
 
+// crypto.randomUUID() only exists in secure contexts (HTTPS or localhost) —
+// falls back to a Math.random-based UUID v4 when served over plain HTTP.
+export function generateId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 export function loadOrCreateThreadId(): string {
   const stored = localStorage.getItem(THREAD_ID_KEY);
   if (stored) return stored;
-  const fresh = crypto.randomUUID();
+  const fresh = generateId();
   localStorage.setItem(THREAD_ID_KEY, fresh);
   return fresh;
 }

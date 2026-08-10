@@ -1,0 +1,24 @@
+# Builds and runs the Next.js dashboard (app/) for production.
+# next.config.ts does not set output: "standalone", so the runtime stage
+# ships full node_modules + .next rather than a pruned standalone bundle.
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY next.config.ts tsconfig.json tsconfig.next.json postcss.config.mjs ./
+COPY src ./src
+COPY app ./app
+RUN npm run dashboard:build
+
+FROM node:22-alpine AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=build /app/package.json /app/package-lock.json ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/next.config.ts ./
+COPY --from=build /app/.next ./.next
+COPY --from=build /app/app ./app
+COPY --from=build /app/src ./src
+
+EXPOSE 3000
+CMD ["npm", "run", "dashboard:start"]

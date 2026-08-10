@@ -1,0 +1,18 @@
+# Builds and runs the standalone agent server (src/server) for production.
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY tsconfig.json ./
+COPY src ./src
+RUN npm run build
+
+FROM node:22-alpine AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts
+COPY --from=build /app/dist ./dist
+
+EXPOSE 8787
+CMD ["sh", "-c", "if [ -n \"$API_CLIENTS_JSON\" ]; then printf '%s' \"$API_CLIENTS_JSON\" > ./api-clients.json; fi; exec node dist/server/index.js"]

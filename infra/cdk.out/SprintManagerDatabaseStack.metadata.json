@@ -1,0 +1,182 @@
+{
+  "/SprintManagerDatabaseStack": [
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:17:18)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    },
+    {
+      "type": "aws:cdk:warning",
+      "data": "No cross-stack-reference strength configured, defaulting to \"strong\". We recommend you set feature flag \"@aws-cdk/core:defaultCrossStackReferences\" to \"both\", then deploy everywhere, then set it to \"weak\". Alternatively, set it to \"strong\" explicitly to lock in the current producer-protecting behavior. (See: https://github.com/aws/aws-cdk/blob/main/packages/aws-cdk-lib/README.md#reference-strength) [ack: @aws-cdk/core:crossStackReferencesDefaultStrong]",
+      "trace": [
+        "Annotations.addMessage (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/core/lib/annotations.js:1:3506)",
+        "Annotations.addWarningV2 (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/core/lib/annotations.js:1:2194)",
+        "resolveValue (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/core/lib/private/refs.js:1:6980)",
+        "resolveReferences (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/core/lib/private/refs.js:1:4848)",
+        "prepareApp (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/core/lib/private/prepare-app.js:1:1503)",
+        "synthesize (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/core/lib/private/synthesis.js:1:2625)",
+        "App.synth (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/core/lib/stage.js:1:5061)",
+        "App.synth (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/core/lib/app.js:1:5050)",
+        "process.<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/aws-cdk-lib/core/lib/app.js:1:3936)",
+        "Object.onceWrapper (node:events:639:26)",
+        "process.emit (node:events:524:28)",
+        "process.emit (node:domain:489:12)",
+        "process.emit.sharedData.processEmitHook.installedValue [as emit] (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/node_modules/@cspotcode/source-map-support/source-map-support.js:745:40)"
+      ]
+    }
+  ],
+  "/SprintManagerDatabaseStack/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerDatabaseStack/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerDatabaseStack/DbSecurityGroup/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DbSecurityGroupE9D701AD"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new SecurityGroup2 in aws-cdk-lib...",
+        "new DatabaseStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/database-stack.ts:17:28)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:17:18)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerDatabaseStack/Postgres/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "Postgres9DC8BB04"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new DatabaseInstance2 in aws-cdk-lib...",
+        "new DatabaseStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/database-stack.ts:24:21)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:17:18)",
+        "...node internals, ts-node, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerDatabaseStack/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerDatabaseStack/Exports/Output{\"Fn::GetAtt\":[\"Postgres9DC8BB04\",\"Endpoint.Address\"]}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputFnGetAttPostgres9DC8BB04EndpointAddress36F9722A"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerDatabaseStack/Exports/Output{\"Fn::GetAtt\":[\"Postgres9DC8BB04\",\"Endpoint.Port\"]}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputFnGetAttPostgres9DC8BB04EndpointPortB3107ED8"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerDatabaseStack/Exports/Output{\"Fn::GetAtt\":[\"DbSecurityGroupE9D701AD\",\"GroupId\"]}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputFnGetAttDbSecurityGroupE9D701ADGroupId7A7C114A"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/SprintManagerDatabaseStack/Postgres/SubnetGroup/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "PostgresSubnetGroup9F8A4D6E"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new DatabaseInstance2 in aws-cdk-lib...",
+        "new DatabaseStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/database-stack.ts:24:21)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:17:18)",
+        "...node internals, ts-node..."
+      ]
+    }
+  ],
+  "/SprintManagerDatabaseStack/Postgres/Secret/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SprintManagerDatabaseStackPostgresSecret08543B6C3fdaad7efa858a3daf9490cf0a702aeb"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new DatabaseInstance2 in aws-cdk-lib...",
+        "new DatabaseStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/database-stack.ts:24:21)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:17:18)"
+      ]
+    }
+  ],
+  "/SprintManagerDatabaseStack/Postgres/Secret/Attachment/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "PostgresSecretAttachment75CD6F6F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new DatabaseInstance2 in aws-cdk-lib...",
+        "new DatabaseStack (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/lib/database-stack.ts:24:21)",
+        "<anonymous> (/Users/nijinvinodan/Documents/Projects/FDE/SprintManager/infra/bin/infra.ts:17:18)",
+        "...node internals, ts-node..."
+      ]
+    }
+  ]
+}

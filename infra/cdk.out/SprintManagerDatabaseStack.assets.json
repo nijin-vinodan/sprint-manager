@@ -1,0 +1,21 @@
+{
+  "version": "54.0.0",
+  "files": {
+    "3cbb33e1cb477a98ad7b54d4d4d33b2b6c021acbf51ba7140c4f354f00735f80": {
+      "displayName": "SprintManagerDatabaseStack Template",
+      "source": {
+        "path": "SprintManagerDatabaseStack.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "877969058937-us-east-1-d9a9065e": {
+          "bucketName": "cdk-hnb659fds-assets-877969058937-us-east-1",
+          "objectKey": "3cbb33e1cb477a98ad7b54d4d4d33b2b6c021acbf51ba7140c4f354f00735f80.json",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::877969058937:role/cdk-hnb659fds-file-publishing-role-877969058937-us-east-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}
