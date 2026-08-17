@@ -7,7 +7,9 @@ vi.mock("../../src/server/db.js", () => ({
   pool: { query: queryMock },
 }));
 
-const { insertStreamChunk, readStreamChunks } = await import("../../src/server/streamChunks.js");
+const { insertStreamChunk, readStreamChunks, readStreamChunksSince } = await import(
+  "../../src/server/streamChunks.js"
+);
 
 beforeEach(() => {
   queryMock.mockReset();
@@ -72,5 +74,32 @@ describe("readStreamChunks", () => {
     });
 
     await expect(readStreamChunks("run-1")).rejects.toThrow("Connection terminated unexpectedly");
+  });
+});
+
+describe("readStreamChunksSince", () => {
+  it("queries with seq > sinceSeq and returns only the newer rows", async () => {
+    const rows = [{ seq: 2, event: { type: "token", path: [], text: "c" } }];
+    queryMock.mockImplementation(async (sql: string) => {
+      if (sql.includes("AND seq > $2")) return { rows, rowCount: rows.length };
+      return { rows: [], rowCount: 0 };
+    });
+
+    const result = await readStreamChunksSince("run-1", 1);
+
+    expect(result).toEqual(rows);
+    const call = queryMock.mock.calls.find((c) => (c[0] as string).includes("AND seq > $2"));
+    expect(call?.[1]).toEqual(["run-1", 1]);
+  });
+
+  it("returns an empty array when there are no rows past sinceSeq (the common cross-replica-poll no-op case)", async () => {
+    queryMock.mockImplementation(async (sql: string) => {
+      if (sql.includes("AND seq > $2")) return { rows: [], rowCount: 0 };
+      return { rows: [], rowCount: 0 };
+    });
+
+    const result = await readStreamChunksSince("run-1", 5);
+
+    expect(result).toEqual([]);
   });
 });

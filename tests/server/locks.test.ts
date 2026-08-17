@@ -7,7 +7,9 @@ vi.mock("../../src/server/db.js", () => ({
   pool: { query: queryMock },
 }));
 
-const { acquireLock, acquireLockOrReject, releaseLock } = await import("../../src/server/locks.js");
+const { acquireLock, acquireLockOrReject, releaseLock, requestCancel, isCancelRequested } = await import(
+  "../../src/server/locks.js"
+);
 
 // locks.ts and streamChunks.ts each memoize their migrate() in a module-level
 // promise that only runs once per process — so across tests in this file,
@@ -110,5 +112,32 @@ describe("releaseLock", () => {
     expect(queryMock.mock.calls.some((c) => (c[0] as string).includes("DELETE FROM stream_chunks"))).toBe(
       false,
     );
+  });
+});
+
+describe("requestCancel", () => {
+  it("issues an UPDATE scoped to the thread, matching run, and 'running' status", async () => {
+    routeQueryMock([{ match: /UPDATE thread_locks SET cancel_requested_at/, result: { rows: [], rowCount: 1 } }]);
+
+    await requestCancel("t1", "run-1");
+
+    const call = queryMock.mock.calls.find((c) => (c[0] as string).includes("cancel_requested_at = now()"));
+    expect(call?.[1]).toEqual(["t1", "run-1"]);
+  });
+});
+
+describe("isCancelRequested", () => {
+  it("returns true when a matching row with cancel_requested_at set exists", async () => {
+    routeQueryMock([
+      { match: /SELECT 1 FROM thread_locks/, result: { rows: [{ "?column?": 1 }], rowCount: 1 } },
+    ]);
+
+    await expect(isCancelRequested("t1", "run-1")).resolves.toBe(true);
+  });
+
+  it("returns false when no matching row exists (not requested, or a different run)", async () => {
+    routeQueryMock([{ match: /SELECT 1 FROM thread_locks/, result: { rows: [], rowCount: 0 } }]);
+
+    await expect(isCancelRequested("t1", "run-1")).resolves.toBe(false);
   });
 });

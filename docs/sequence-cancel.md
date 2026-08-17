@@ -6,11 +6,15 @@ closing the connection anymore. It now aborts its own local reader
 immediately (so the UI stops right away) *and* asks the server explicitly to
 cancel the run.
 
-Same-replica only today — `runRegistry.ts`'s abort-controller map only knows
-about runs executing on this process. If the run lives on a different
-replica, this is a documented no-op; cross-replica cancel would need the same
-`LISTEN`/`NOTIFY` channel that cross-replica resume would (see
-[Resume after refresh](sequence-resume.md)).
+Works across replicas: the same-replica path (`runRegistry.ts`'s
+abort-controller map) is tried first for an instant abort, but the request is
+also always durably recorded via `requestCancel()` (`locks.ts`,
+`thread_locks.cancel_requested_at`) regardless of whether the local attempt
+found anything. Whichever replica actually owns the run polls that column
+(~1s interval, alongside its `registerRun`/`unregisterRun` lifecycle in
+`routes.ts`) and cancels itself once it sees the flag — no `LISTEN`/`NOTIFY`
+or replica-to-replica messaging needed, since `thread_locks` is already the
+shared source of truth every replica can read.
 
 See also: [Chat](sequence-chat.md), [Resume after refresh](sequence-resume.md).
 
@@ -35,18 +39,14 @@ sequenceDiagram
 
     alt no active run for this thread
         Routes-->>NextRoute: { cancelled: false }
-    else run found, owned by this replica
-        Routes->>RunRegistry: cancelRun(runId)
-        RunRegistry->>RunRegistry: look up AbortController,<br/>call .abort()
-        RunRegistry-->>Routes: true
+    else run found (owned by this replica, or by another one)
+        Routes->>RunRegistry: cancelRun(runId)<br/>(instant if owned locally, no-op otherwise)
+        Routes->>Postgres: requestCancel(threadId, runId)<br/>UPDATE thread_locks SET cancel_requested_at = now()
         Routes-->>NextRoute: { cancelled: true }
-    else run found, owned by a different replica
-        Routes->>RunRegistry: cancelRun(runId)
-        RunRegistry-->>Routes: false (not found locally)
-        Routes-->>NextRoute: { cancelled: false }
-        Note over Routes: documented gap — Milestone 2 would add<br/>a pg_notify("cancel_run", ...) fallback here
     end
 
     NextRoute-->>ChatPanel: JSON passthrough
     ChatPanel-->>Browser: input re-enabled, Send button restored
+
+    Note over Postgres,RunRegistry: Meanwhile, on whichever replica actually<br/>owns runId (registered via registerRun in<br/>POST /invoke/stream): a ~1s poll notices<br/>cancel_requested_at and calls its own local<br/>cancelRun(runId) — works the same whether<br/>that's this replica or a different one.
 ```

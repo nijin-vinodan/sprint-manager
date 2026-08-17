@@ -50,3 +50,17 @@ export async function readStreamChunks(runId: string): Promise<StreamChunkRow[]>
   );
   return result.rows;
 }
+
+/**
+ * Polled by a resuming replica that doesn't own the run locally, to tail new
+ * chunks a different replica's emitter is writing — the cross-replica
+ * fallback for the in-process broadcastLocal() fan-out in runRegistry.ts.
+ */
+export async function readStreamChunksSince(runId: string, sinceSeq: number): Promise<StreamChunkRow[]> {
+  await ensureStreamChunksTable();
+  const result = await pool.query<{ seq: number; event: SseEvent }>(
+    `SELECT seq, event FROM stream_chunks WHERE run_id = $1 AND seq > $2 ORDER BY seq ASC;`,
+    [runId, sinceSeq],
+  );
+  return result.rows;
+}

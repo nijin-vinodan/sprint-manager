@@ -3,12 +3,12 @@ import { getAgent } from "./agentRuntime.js";
 import { getCheckpointer } from "./checkpointer.js";
 import { pool } from "./db.js";
 import { serverConfig } from "./config.js";
-import { acquireLockOrReject, releaseLock } from "./locks.js";
+import { acquireLockOrReject, releaseLock, requestCancel, isCancelRequested } from "./locks.js";
 import { requireApiKey } from "./auth.js";
 import { langfuseCallbacks, flushTracing } from "../tracing.js";
 import { debugCallbacks } from "../debugLogger.js";
 import { extractText, sseFrame, pumpRun, checkpointMessagesToHistory, createRunEmitter, type SseEvent } from "./sse.js";
-import { readStreamChunks } from "./streamChunks.js";
+import { readStreamChunks, readStreamChunksSince } from "./streamChunks.js";
 import { registerRun, unregisterRun, cancelRun, subscribeToRun } from "./runRegistry.js";
 import { getActiveSprint, getSprintIssues } from "../tools/jira.js";
 import { getOpenPullRequests, getRecentCommits } from "../tools/github.js";
@@ -346,6 +346,17 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
         closed = true;
       });
 
+      // Cross-replica fallback for /threads/:threadId/cancel: a cancel
+      // request that lands on a different replica than this one can't reach
+      // registerRun's local abortController directly, so it durably records
+      // the request in thread_locks instead. This replica polls for that and
+      // reuses the same local cancelRun() path once it sees it.
+      const cancelPoll = setInterval(() => {
+        void isCancelRequested(body.threadId, runId).then((requested) => {
+          if (requested) cancelRun(runId);
+        });
+      }, 1_000);
+
       try {
         const agent = await getAgent();
         const run = await agent.streamEvents(
@@ -372,6 +383,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
         emit({ type: "error", message: err instanceof Error ? err.message : String(err) });
       } finally {
         clearInterval(heartbeat);
+        clearInterval(cancelPoll);
         unregisterRun(runId);
         // A tracing/lock-release failure (e.g. Langfuse unreachable) must never
         // prevent reply.raw.end() below — otherwise the chunked response is left
@@ -420,6 +432,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
       let lastSeqSent = -1;
       const buffered: Array<{ seq: number; event: SseEvent }> = [];
       let live = false;
+      let pollTimer: NodeJS.Timeout | undefined;
 
       const writeEvent = (event: SseEvent) => {
         if (closed) return;
@@ -427,12 +440,16 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
         if (event.type === "done" || event.type === "error") {
           closed = true;
           unsubscribe();
+          if (pollTimer) clearInterval(pollTimer);
           reply.raw.end();
         }
       };
 
       // Subscribe before reading the backlog so any chunk emitted while the
-      // backlog query is in flight is buffered here rather than lost.
+      // backlog query is in flight is buffered here rather than lost. This
+      // fast path only delivers live updates if this replica happens to be
+      // the one running the agent loop for runId — the poll below is the
+      // cross-replica fallback for when it isn't.
       const unsubscribe = subscribeToRun(runId, (seq, event) => {
         if (!live) {
           buffered.push({ seq, event });
@@ -446,6 +463,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
       request.raw.on("close", () => {
         closed = true;
         unsubscribe();
+        if (pollTimer) clearInterval(pollTimer);
       });
 
       try {
@@ -471,7 +489,41 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
         if (!closed) {
           writeEvent({ type: "error", message: err instanceof Error ? err.message : String(err) });
         }
+        return;
       }
+      if (closed) return;
+
+      // Cross-replica fallback: harmless no-op on the replica that actually
+      // owns runId (its local subscribeToRun push already delivered these
+      // rows, deduped here via lastSeqSent) — but for any other replica,
+      // this is the only way new chunks ever arrive, since subscribeToRun
+      // above only found a subscriber list if this process created it.
+      pollTimer = setInterval(() => {
+        void (async () => {
+          if (closed) return;
+          try {
+            const rows = await readStreamChunksSince(runId, lastSeqSent);
+            for (const row of rows) {
+              if (row.seq <= lastSeqSent) continue;
+              lastSeqSent = row.seq;
+              writeEvent(row.event);
+              if (closed) return;
+            }
+            const stillRunning = await pool.query(
+              `SELECT 1 FROM thread_locks WHERE thread_id = $1 AND locked_by = $2 AND status = 'running';`,
+              [threadId, runId],
+            );
+            if (stillRunning.rowCount === 0 && !closed) {
+              closed = true;
+              unsubscribe();
+              if (pollTimer) clearInterval(pollTimer);
+              reply.raw.end();
+            }
+          } catch (err) {
+            request.log.error({ app: request.apiClient?.appName, threadId, runId, err }, "stream (resume): poll failed");
+          }
+        })();
+      }, 1_500);
     });
 
     protectedRoutes.post("/threads/:threadId/cancel", async (request, reply) => {
@@ -489,11 +541,12 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
         return reply.send({ cancelled: false, reason: "no active run for this thread" });
       }
 
-      // Same-replica only in Milestone 1 — if the run lives on a different
-      // replica this is a documented no-op (Milestone 2 adds a pg_notify
-      // fallback for cross-replica cancel).
-      const cancelled = cancelRun(runId);
-      return reply.send({ cancelled });
+      // Tries the instant same-replica path first; either way, durably
+      // records the request so the replica actually running this thread —
+      // wherever it is — picks it up via its own cancelPoll within ~1s.
+      cancelRun(runId);
+      await requestCancel(threadId, runId);
+      return reply.send({ cancelled: true });
     });
   });
 }

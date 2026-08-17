@@ -26,6 +26,7 @@
     "@fastify/sensible": "^6.0.4",
     "@langchain/anthropic": "^1.5.2",
     "@langchain/core": "^1.2.0",
+    "@langchain/google-genai": "^2.2.0",
     "@langchain/langgraph": "^1.4.4",
     "@langchain/langgraph-checkpoint": "^1.1.2",
     "@langchain/langgraph-checkpoint-postgres": "^1.0.4",

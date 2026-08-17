@@ -15,6 +15,11 @@ async function migrate(): Promise<void> {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `);
+  // CREATE TABLE IF NOT EXISTS above won't retroactively add this column to
+  // an already-live table, hence the separate ALTER.
+  await pool.query(`
+    ALTER TABLE thread_locks ADD COLUMN IF NOT EXISTS cancel_requested_at TIMESTAMPTZ;
+  `);
 }
 
 export async function ensureLocksTable(): Promise<void> {
@@ -76,6 +81,36 @@ export async function acquireLockOrReject(threadId: string, reply: FastifyReply)
     return { acquired: false };
   }
   return { acquired: true, runId: lockOwner };
+}
+
+/**
+ * Durably records a cancellation request for a thread's *current* run, so
+ * any replica can see it — not just the one that happens to be running the
+ * agent loop for it. The locked_by match guards against canceling a newer
+ * run that reused the same thread after the original one finished.
+ *
+ * This is the cross-replica fallback for cancelRun() in runRegistry.ts,
+ * which only works when the cancel request happens to land on the replica
+ * that owns the run. The owning replica polls isCancelRequested() and calls
+ * its own local cancelRun() once it sees this flag set.
+ */
+export async function requestCancel(threadId: string, runId: string): Promise<void> {
+  await ensureLocksTable();
+  await pool.query(
+    `UPDATE thread_locks SET cancel_requested_at = now()
+     WHERE thread_id = $1 AND locked_by = $2 AND status = 'running';`,
+    [threadId, runId],
+  );
+}
+
+/** Polled by the replica actually running a given run to notice a cross-replica cancel request. */
+export async function isCancelRequested(threadId: string, runId: string): Promise<boolean> {
+  const result = await pool.query(
+    `SELECT 1 FROM thread_locks
+     WHERE thread_id = $1 AND locked_by = $2 AND cancel_requested_at IS NOT NULL;`,
+    [threadId, runId],
+  );
+  return result.rowCount === 1;
 }
 
 /**

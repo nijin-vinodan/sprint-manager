@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { ChatAnthropic } from "@langchain/anthropic";
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -7,6 +8,30 @@ function requireEnv(name: string): string {
     throw new Error(`Missing required environment variable: ${name}`);
   }
   return value;
+}
+
+const modelProvider = process.env.MODEL_PROVIDER ?? "litellm";
+
+function buildModel() {
+  switch (modelProvider) {
+    case "litellm":
+      // Claude via a LiteLLM proxy speaking the Anthropic-compatible API,
+      // instead of talking to Bedrock directly with AWS credentials.
+      return new ChatAnthropic({
+        model: requireEnv("ANTHROPIC_MODEL"),
+        apiKey: requireEnv("ANTHROPIC_AUTH_TOKEN"),
+        anthropicApiUrl: requireEnv("ANTHROPIC_BASE_URL"),
+      });
+    case "gemini":
+      return new ChatGoogleGenerativeAI({
+        model: requireEnv("GEMINI_MODEL"),
+        apiKey: requireEnv("GEMINI_API_KEY"),
+      });
+    default:
+      throw new Error(
+        `Unknown MODEL_PROVIDER: ${modelProvider} (expected "litellm" or "gemini")`,
+      );
+  }
 }
 
 export const config = {
@@ -23,13 +48,7 @@ export const config = {
     repo: requireEnv("GITHUB_REPO"),
   },
   agent: {
-    // Claude via a LiteLLM proxy speaking the Anthropic-compatible API,
-    // instead of talking to Bedrock directly with AWS credentials.
-    model: new ChatAnthropic({
-      model: requireEnv("ANTHROPIC_MODEL"),
-      apiKey: requireEnv("ANTHROPIC_AUTH_TOKEN"),
-      anthropicApiUrl: requireEnv("ANTHROPIC_BASE_URL"),
-    }),
+    model: buildModel(),
   },
   digest: {
     intervalMinutes: Number(process.env.DIGEST_INTERVAL_MINUTES ?? 20),

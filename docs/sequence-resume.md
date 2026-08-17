@@ -9,11 +9,16 @@ in `stream_chunks` (via `createRunEmitter` in `sse.ts`) the instant it
 happens. Reconnecting just means reading that backlog from the top, then
 falling in step with whatever's still being emitted live.
 
-This is same-replica only today: chunk fan-out to a live subscriber goes
-through the in-process `runRegistry.ts`, not a cross-replica channel. A
-reconnect that lands on a different replica than the one running the agent
-would need Postgres `LISTEN`/`NOTIFY` to tail live chunks — not built yet,
-since the deployment is a single Fastify process.
+Works across replicas: `subscribeToRun` (`runRegistry.ts`) still gives an
+instant, zero-latency path when the reconnect happens to land on the same
+replica that's running the agent loop — but every connection also starts a
+~1.5s poll of `readStreamChunksSince` (`streamChunks.ts`) as a fallback. That
+poll is a no-op on the owning replica (the local push already delivered those
+rows, deduped by `seq`), but on any other replica it's the only way live
+chunks ever arrive, since `subscribeToRun` there just finds no subscriber
+list and does nothing. The same poll also checks `thread_locks.status` to
+notice the run finishing even if this replica never saw a `done`/`error`
+chunk directly.
 
 See also: [Chat](sequence-chat.md), [Thread history](sequence-history.md), [Cancel](sequence-cancel.md).
 
@@ -50,11 +55,21 @@ sequenceDiagram
         StreamChunks-->>Routes: ordered backlog
         Routes-->>NextRoute: replay backlog as SSE frames
         NextRoute-->>ChatPanel: catch-up tokens/tool events
-        RunRegistry-->>Routes: live chunks as the run<br/>keeps emitting (same connection)
+
+        par same-replica fast path (if this replica owns runId)
+            RunRegistry-->>Routes: live chunks as the run<br/>keeps emitting (same connection)
+        and cross-replica fallback (always running, ~1.5s interval)
+            loop until done/error or thread_locks no longer 'running'
+                Routes->>StreamChunks: readStreamChunksSince(runId, lastSeqSent)
+                StreamChunks->>Postgres: SELECT seq, event<br/>WHERE seq > lastSeqSent
+                Postgres-->>StreamChunks: any new rows
+                StreamChunks-->>Routes: new chunks (deduped by seq —<br/>no-op if the fast path already sent them)
+            end
+        end
         Routes-->>NextRoute: live SSE frames, deduped by seq
         NextRoute-->>ChatPanel: live tokens continue
         ChatPanel->>ChatPanel: consumeSseStream() renders replay<br/>+ live as one continuous stream<br/>(same handleEvent as a fresh send)
-        Note over Routes,RunRegistry: on done/error, subscriber<br/>unsubscribes and the connection ends
+        Note over Routes,RunRegistry: on done/error, subscriber<br/>unsubscribes, poll clears,<br/>and the connection ends
     end
 
     ChatPanel-->>Browser: chat resumes as if never interrupted
