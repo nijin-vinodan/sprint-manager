@@ -102,8 +102,10 @@ Required environment variables (see `.env.example`):
 | `JIRA_PROJECT_KEY` | Defaults to `SMA` |
 | `GITHUB_TOKEN` | GitHub PAT |
 | `GITHUB_OWNER` / `GITHUB_REPO` | Target repo |
-| `ANTHROPIC_MODEL` | Model id passed to the LiteLLM proxy, e.g. `claude-sonnet-4-5-20250929` |
-| `ANTHROPIC_AUTH_TOKEN` / `ANTHROPIC_BASE_URL` | Auth token + base URL for the LiteLLM proxy (speaks the Anthropic-compatible API) |
+| `MODEL_PROVIDER` | `litellm` (default), `anthropic`, or `gemini` — see `src/config.ts` |
+| `ANTHROPIC_MODEL` | Model id, e.g. `claude-sonnet-4-5-20250929` (used by both `litellm` and `anthropic` providers) |
+| `ANTHROPIC_AUTH_TOKEN` / `ANTHROPIC_BASE_URL` | Auth token + base URL for the LiteLLM proxy (only when `MODEL_PROVIDER=litellm`) |
+| `ANTHROPIC_API_KEY` | Direct Anthropic API key (only when `MODEL_PROVIDER=anthropic`) |
 
 ## Project structure
 

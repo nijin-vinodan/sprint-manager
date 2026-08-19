@@ -22,6 +22,13 @@ function buildModel() {
         apiKey: requireEnv("ANTHROPIC_AUTH_TOKEN"),
         anthropicApiUrl: requireEnv("ANTHROPIC_BASE_URL"),
       });
+    case "anthropic":
+      // Claude via the direct Anthropic API (api.anthropic.com), using a
+      // plain Anthropic API key rather than a LiteLLM proxy or Bedrock.
+      return new ChatAnthropic({
+        model: requireEnv("ANTHROPIC_MODEL"),
+        apiKey: requireEnv("ANTHROPIC_API_KEY"),
+      });
     case "gemini":
       return new ChatGoogleGenerativeAI({
         model: requireEnv("GEMINI_MODEL"),
@@ -29,7 +36,7 @@ function buildModel() {
       });
     default:
       throw new Error(
-        `Unknown MODEL_PROVIDER: ${modelProvider} (expected "litellm" or "gemini")`,
+        `Unknown MODEL_PROVIDER: ${modelProvider} (expected "litellm", "anthropic", or "gemini")`,
       );
   }
 }

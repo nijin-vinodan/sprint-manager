@@ -19,6 +19,7 @@ import { insertResolutionRecord, getCachedResolutionHistory, getLastResolutionUp
 import { predictResolutionDays } from "../prediction/knn.js";
 import { scoreConfidence } from "../prediction/confidence.js";
 import { thresholds } from "../config.js";
+import { runPredictorEvaluation } from "../predictorEvaluation/runEvaluation.js";
 
 interface InvokeBody {
   threadId: string;
@@ -252,6 +253,23 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
           { app: request.apiClient?.appName, err },
           "collect-resolution-history: failed",
         );
+        return reply.code(500).send({ error: err instanceof Error ? err.message : String(err) });
+      }
+    });
+
+    // On-demand trigger for the predictor evaluation agent (src/predictorEvaluation/) —
+    // manual-only for now (no scheduler wired up), same as collect-resolution-history's
+    // "no cron infra in this repo" note above. Fully isolated from the live agent: it never
+    // touches the orchestrator's subagents, and never touches src/prediction/*'s live k-NN
+    // model. A run can take several minutes (Modal sandbox spin-up + model training), so this
+    // is a synchronous, long-running request — the PREDICTOR_EVAL_TIMEOUT_MINUTES budget guard
+    // in src/predictorEvaluation/config.ts caps the worst case.
+    protectedRoutes.post("/internal/evaluate-predictor", async (request, reply) => {
+      try {
+        const report = await runPredictorEvaluation();
+        return reply.send(report);
+      } catch (err) {
+        request.log.error({ app: request.apiClient?.appName, err }, "evaluate-predictor: failed");
         return reply.code(500).send({ error: err instanceof Error ? err.message : String(err) });
       }
     });
