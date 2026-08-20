@@ -7,7 +7,7 @@ import { JIRA_ANALYST_PROMPT } from "../prompts/jiraAnalyst.js";
 export const jiraAnalyst: SubAgent = {
   name: "jira-analyst",
   description:
-    "Fetches Jira sprint and issue data (active sprint, sprint issues, per-issue details/comments) and can predict resolution time for an issue via k-NN over resolution history. Read-only, facts only — does not judge sprint health.",
+    "Fetches Jira sprint and issue data (active sprint, sprint issues, per-issue details/comments) and can predict resolution time for an issue, via k-NN over resolution history by default or via a specific predictor-evaluation run's winner model when given an evaluationRunId. Read-only, facts only — does not judge sprint health.",
   systemPrompt: JIRA_ANALYST_PROMPT,
   tools: [getActiveSprint, getSprintIssues, getIssueDetails, predictResolutionTime],
   model: config.agent.model,

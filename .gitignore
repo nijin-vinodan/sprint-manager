@@ -6,3 +6,4 @@ dist/
 *.log
 *.tsbuildinfo
 api-clients.json
+predictor-evaluation-artifacts/

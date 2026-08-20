@@ -1,5 +1,6 @@
 import { BaseCallbackHandler } from "@langchain/core/callbacks/base";
 import type { Serialized } from "@langchain/core/load/serializable";
+import type { LLMResult } from "@langchain/core/outputs";
 
 // Set DEBUG_AGENT=1 to see how the orchestrator plans, delegates to sub-agents,
 // and uses its virtual filesystem. Silent otherwise so normal runs stay clean.
@@ -113,6 +114,25 @@ export class AgentDebugLogger extends BaseCallbackHandler {
   handleToolError(err: unknown, runId: string) {
     const label = this.labels.get(runId) ?? ROOT_LABEL;
     console.log(`[${label}] ❌ tool error ->`, truncate(err instanceof Error ? err.message : err));
+  }
+
+  // Anthropic prompt caching (enabled automatically by deepagents for any
+  // ChatAnthropic model) surfaces cache read/write counts via usage_metadata;
+  // Gemini responses won't have input_token_details, so this stays silent there.
+  handleLLMEnd(output: LLMResult, runId: string) {
+    const label = this.labels.get(runId) ?? ROOT_LABEL;
+    const generation = output.generations?.[0]?.[0] as { message?: { usage_metadata?: Record<string, unknown> } } | undefined;
+    const usage = generation?.message?.usage_metadata;
+    if (!usage) return;
+
+    const details = (usage.input_token_details ?? {}) as Record<string, unknown>;
+    const cacheRead = Number(details.cache_read ?? 0);
+    const cacheWrite = Number(details.cache_creation ?? 0);
+    if (cacheRead === 0 && cacheWrite === 0 && details.cache_read === undefined && details.cache_creation === undefined) return;
+
+    console.log(
+      `[${label}] 💾 cache: read=${cacheRead} write=${cacheWrite} in=${usage.input_tokens ?? 0} out=${usage.output_tokens ?? 0}`,
+    );
   }
 }
 
