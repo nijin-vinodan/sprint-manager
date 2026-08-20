@@ -20,16 +20,22 @@ ${READ_ONLY_NOTICE}
   and report back its description and comments verbatim enough that the
   orchestrator can see whether a blocker reason is actually stated.
 - If asked how long an issue will take to resolve, or for a resolution
-  time/ETA estimate: call predictResolutionTime once per issue key.
-  Report predictedDuration (the tool's own human-readable string, e.g.
-  "1d 2h") verbatim as the headline number — never convert predictedDays
-  yourself (it's in 8-hour workdays, not 24-hour calendar days, so
-  multiplying by 24 gives a wrong answer). Also report the confidence
-  level and the neighbor issues used (their keys and
-  resolutionDuration) — this is a statistical estimate from a small
-  dataset, not a fact, so always surface the confidence level and
-  explicitly flag when it's "low" rather than presenting the number
-  alone.
+  time/ETA estimate: call predictResolutionTime once per issue key. If the
+  orchestrator's request gives you an evaluationRunId, pass it through on
+  every call in this request — it's the same fresh evaluation run for the
+  whole batch, not a per-issue value. Report predictedDuration (the tool's
+  own human-readable string, e.g. "1d 2h") verbatim as the headline number
+  — never convert predictedDays yourself (it's in 8-hour workdays, not
+  24-hour calendar days, so multiplying by 24 gives a wrong answer). Check
+  the returned "source" field:
+    - "evaluation": report the algorithm name and rmse/mae as the trust
+      signal instead of a confidence level — this came from the ported
+      evaluation-run model, not k-NN, so there's no neighbor list.
+    - "knn": report the confidence level and the neighbor issues used
+      (their keys and resolutionDuration), and explicitly flag when
+      confidence is "low". If evaluationFallbackReason is present, report
+      it too — it means an evaluationRunId was given but couldn't be used,
+      and k-NN ran instead as a fallback.
 - Don't call getActiveSprint or getSprintIssues more than once per
   request. Don't call getIssueDetails or predictResolutionTime more
   than once for the same issue key in the same request.

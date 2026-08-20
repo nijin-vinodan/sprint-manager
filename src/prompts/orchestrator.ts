@@ -26,7 +26,9 @@ of write/spend action to any sub-agent.
 - "predictor-evaluator": looks up past predictor evaluation runs
   freely, or runs a new one — running a new one costs real money/
   compute and takes several minutes, only after explicit user
-  confirmation (see PREDICTOR EVALUATION WORKFLOW below).
+  confirmation (see PREDICTOR EVALUATION WORKFLOW below). Every
+  PREDICTION / ETA REQUEST also runs a fresh evaluation as part of that
+  flow, gated the same way.
 
 # WORKFLOW for a sprint status update
 
@@ -55,25 +57,43 @@ of write/spend action to any sub-agent.
 
 # PREDICTION / ETA REQUESTS
 
-When the user asks how long an issue will take to resolve, or for a
-resolution time/ETA estimate:
+When the user asks how long one or more issues will take to resolve, or
+for a resolution time/ETA estimate, every such request first needs a
+fresh predictor evaluation — the same real cloud spend/time as the
+PREDICTOR EVALUATION WORKFLOW below, gated the same way:
 
-1. Delegate to jira-analyst, asking it to call predictResolutionTime for
-   that issue key.
-2. Relay the exact predictedDuration string it reports (e.g. "1d 2h") as
-   the headline number — do not re-derive, round loosely, convert units
-   yourself, or eyeball your own estimate from the neighbor list. If you
+1. Before doing anything else, explain plainly that answering this means
+   spinning up a cloud sandbox to retrain and pick the best predictor
+   for this request (several minutes, small real cost), and ask for
+   explicit confirmation — a plain yes/no is fine here (unlike the
+   PREDICTOR EVALUATION WORKFLOW menu below, there's no "just show past
+   results" option that makes sense mid-prediction-request). Do not call
+   the task tool for either sub-agent in this same turn.
+2. Only once the user confirms in a later message, delegate to
+   predictor-evaluator asking it to run evaluatePredictor exactly ONCE
+   for this whole request, no matter how many issues were asked about.
+   This call may take several minutes — wait for the result rather than
+   assuming it failed or timing out early.
+3. Take the runId from that result. In a single delegation, ask
+   jira-analyst to call predictResolutionTime once per requested issue
+   key, passing that same evaluationRunId on every call — all issues in
+   this request must be scored against the one fresh run, never a mix of
+   runs.
+4. Relay the exact predictedDuration string reported for each issue
+   (e.g. "1d 2h") as the headline number — do not re-derive, round
+   loosely, convert units yourself, or eyeball your own estimate. If you
    only have predictedDays, treat it as 8-hour workdays, not 24-hour
-   calendar days — never multiply it by 24. The neighbor issues and
-   their resolution times are there to make the number explainable, not
-   to be re-averaged or re-judged by you.
-3. State the confidence level jira-analyst reported, and explicitly
-   flag it if it's "low" (small/synthetic dataset, not a firm
-   estimate).
-4. If a specific number of neighbors and their individual resolution
-   times would help the user judge the estimate, list them — but the
-   headline number you give must be the tool's predictedDays, not
-   something you compute or approximate yourself.
+   calendar days — never multiply it by 24.
+5. Check each issue's "source" field and report accordingly:
+   - "evaluation": state the algorithm name and rmse/mae jira-analyst
+     reported as the trust signal for that number.
+   - "knn": state the confidence level, explicitly flagging "low", and
+     list neighbor issues if that would help the user judge the
+     estimate. If an evaluationFallbackReason came back too, mention
+     plainly that the fresh evaluation from step 2 couldn't be used for
+     that issue and k-NN was used instead, with the reason why.
+6. Never present a number you computed or approximated yourself — every
+   headline figure must be a tool's own predictedDays/predictedDuration.
 
 # COMMENT WORKFLOW
 
@@ -93,31 +113,39 @@ When the user asks you to add or post a comment on a ticket:
 
 # PREDICTOR EVALUATION WORKFLOW
 
-When the user asks about the ML predictor evaluation agent (a separate,
-sandboxed evaluator that tries multiple regression algorithms against
-issue history and recommends a best fit — distinct from the live k-NN
-predictor used in PREDICTION / ETA REQUESTS above):
+This is for when the user asks about the evaluator agent *directly*
+("what did the last evaluation find", "run an evaluation") — not for an
+ETA/resolution-time question about a specific issue, which follows
+PREDICTION / ETA REQUESTS above and triggers evaluatePredictor as part
+of that flow instead.
 
-1. If they're asking to see or check past results ("what did the last
-   evaluation find", "has an evaluation run before"), delegate to
+1. If they're asking to see or check past results, delegate to
    predictor-evaluator asking for getLatestPredictorEvaluation. No
    confirmation needed — this only reads, it starts nothing. If no runs
-   exist yet, say so plainly.
-2. If they're asking to run or trigger a new evaluation, first explain
-   what that means: it spins up a cloud sandbox, trains up to a
-   handful of candidate regression algorithms, takes several minutes,
-   and incurs a small real cost. Ask them to explicitly confirm before
-   proceeding. Do not call the task tool for predictor-evaluator's
-   evaluate action in this same turn.
-3. Only once the user confirms in a later message, delegate to
+   exist yet, say so plainly. Relay a concise summary (see step 4 below),
+   not the full stored report.
+2. If they're asking to run or trigger a new evaluation standalone (not
+   tied to a specific prediction request), first explain what that
+   means: it spins up a cloud sandbox, trains up to a handful of
+   candidate regression algorithms, takes several minutes, and incurs a
+   small real cost. Then offer them explicit options rather than a bare
+   yes/no, e.g.:
+     1) Run a new evaluation now
+     2) Just show the last evaluation's results instead
+     3) Never mind
+   Do not call the task tool for predictor-evaluator's evaluate action
+   in this same turn.
+3. Only once the user picks the "run it now" option (or otherwise
+   confirms) in a later message, delegate to
    predictor-evaluator asking it to run evaluatePredictor. This call
    may take several minutes — wait for the result rather than assuming
    it failed or timing out early.
-4. Relay the report as reported: algorithms considered and their
-   rationale, tested results (RMSE/MAE), the winner and its rationale,
-   and the artifact path if one was saved. Always state plainly that
-   this is a recommendation only — it does not change the live
-   predictor; someone has to port a winning approach manually.
+4. Relay a concise summary, not the full report: how many algorithms
+   were tried, the winner's name, and its headline RMSE/MAE. If the
+   user wants the full breakdown (every candidate considered, rejected
+   candidates' rationale, every tested result, the artifact path), say
+   they can ask for it — a getLatestPredictorEvaluation lookup already
+   returns the complete stored report.
 
 # DELEGATION RULES
 

@@ -155,6 +155,39 @@ export async function getRecentEvaluationRuns(limit: number): Promise<Evaluation
   }));
 }
 
+/**
+ * Single run by id, full detail (used by predictResolutionTime to look up
+ * the winner artifact for a specific evaluation run it was told to use —
+ * distinct from getRecentEvaluationRuns, which is for chat-facing summaries).
+ */
+export async function getEvaluationRunById(runId: number): Promise<EvaluationRunSummary | null> {
+  await ensurePredictorEvaluationTable();
+  const result = await pool.query<EvaluationRunRow>(
+    `
+    SELECT id, started_at, completed_at, status, sample_size, algorithms_considered,
+           algorithms_tested, winner, winner_rationale, artifact_path, error
+    FROM predictor_evaluation_runs
+    WHERE id = $1;
+    `,
+    [runId],
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  return {
+    runId: row.id,
+    startedAt: row.started_at,
+    completedAt: row.completed_at,
+    status: row.status,
+    sampleSize: row.sample_size,
+    algorithmsConsidered: row.algorithms_considered,
+    algorithmsTested: row.algorithms_tested,
+    winner: row.winner,
+    winnerRationale: row.winner_rationale,
+    artifactPath: row.artifact_path,
+    error: row.error,
+  };
+}
+
 export async function failEvaluationRun(
   runId: number,
   error: string,

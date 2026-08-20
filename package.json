@@ -6,7 +6,7 @@
   "description": "DeepAgents-based sprint status/risk agent over live Jira + GitHub data",
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && mkdir -p dist/predictorEvaluation && cp src/predictorEvaluation/infer.py dist/predictorEvaluation/infer.py",
     "typecheck": "tsc --noEmit",
     "server:dev": "tsx watch src/server/index.ts",
     "server:build": "npm run build",

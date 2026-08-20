@@ -93,6 +93,11 @@ npm run dev -- "What's blocking SMA-42?"
 npm test               # vitest unit tests (dateUtils, knn, commentEvaluator, server)
 ```
 
+Predictions also require a local `python3` with `scikit-learn`, `xgboost`, `lightgbm`, `pandas`, and
+`joblib` installed — used to score against a fresh predictor-evaluation winner model (see
+[Predictor evaluation](#predictor-evaluation-ml-algorithm-bake-off) below), separate from the Modal
+sandbox the evaluation itself trains in.
+
 Required environment variables (see `.env.example`):
 
 | Variable | Purpose |
@@ -149,6 +154,24 @@ dashboard page (`app/components/ResolutionPredictor.tsx`, tab "Predict").
   `scripts/backfillResolutionHistory.ts` does an initial one-off backfill (note: this script
   currently has a broken import path — see `CLAUDE.md`).
 - See `docs/sequence-resolution-prediction.md` for the full flow.
+
+### Predictor evaluation (ML algorithm bake-off)
+
+`src/predictorEvaluation/` runs a separate, sandboxed agent (Modal cloud sandbox) that trains a
+handful of candidate scikit-learn/XGBoost/LightGBM regressors against `issue_resolution_history`
+and picks a winner by RMSE/MAE — exposed as the `predictor-evaluator` sub-agent's `evaluatePredictor`
+action. It costs real (small) cloud compute and takes several minutes, so it's gated behind explicit
+user confirmation in chat, the same pattern as `jira-writer`.
+
+**The winner is used live, not just recommended.** Every PREDICTION/ETA request in chat first runs
+one fresh evaluation for that request (same confirmation gate), then scores every issue asked about
+against that run's winner artifact via a local Python subprocess (`src/predictorEvaluation/infer.py`,
+invoked from `src/predictorEvaluation/localInference.ts`) — falling back to the k-NN predictor above
+if the run produced no usable winner. This means the **agent server host itself** needs a local
+Python 3 environment with `scikit-learn`, `xgboost`, `lightgbm`, `pandas`, and `joblib` installed
+(not just the disposable Modal sandbox, which already has these) — `predictResolutionTime`'s
+`source` field in its result tells you which path actually served a given prediction (`"evaluation"`
+vs `"knn"`).
 
 ## Jira comment evaluator (implemented, not currently wired up)
 
